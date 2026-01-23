@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>G80 Sport</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/public/g80sport_favicon.png" />
+    <link rel="shortcut icon" type="image/png" href="/public/g80sport_favicon.png" />
+    <link rel="apple-touch-icon" href="/public/g80sport_favicon.png" />
+    <meta name="description" content="Da G80 potrete acquistare un'ampia scelta di articoli sportivi per lo sci e lo snowboard, dalle prestazioni e dalla durabilità eccellenti." />
+    <meta name="author" content="G80 Sport" />
+
+    <meta property="og:title" content="G80 Sport" />
+    <meta property="og:description" content="Da G80 potrete acquistare un'ampia scelta di articoli sportivi per lo sci e lo snowboard, dalle prestazioni e dalla durabilità eccellenti." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/public/g80sport_favicon.png" />
+    
+    <!-- Google Fonts - Oswald -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Preload critical images for instant loading -->
+    <link rel="preload" as="image" href="/skiing-hero.jpg" fetchpriority="high" />
+    <link rel="preload" as="image" href="/maarten-duineveld-pmfJcN7RGiw-unsplash.jpg" fetchpriority="high" />
+    
+    <!-- Critical CSS for instant background -->
+    <style>
+      .hero-bg {
+        background: linear-gradient(135deg, #0f4c75 0%, #3282b8 50%, #0f4c75 100%);
+        background-image: url('/maarten-duineveld-pmfJcN7RGiw-unsplash.jpg');
+        background-size: cover;
+        background-position: center 30%;
+        background-repeat: no-repeat;
+        background-attachment: scroll;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <!-- IMPORTANT: DO NOT REMOVE THIS SCRIPT TAG OR THIS VERY COMMENT! -->
+    <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
