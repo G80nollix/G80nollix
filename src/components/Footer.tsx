@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
-import { Mail, Phone, MapPin, Facebook } from "lucide-react";
+import { Mail, Phone, MapPin, Instagram, Facebook, Camera } from "lucide-react";
 
 const Footer = () => {
   return (
-    <footer className="pt-12 pb-4 text-white" style={{ backgroundColor: '#302438', fontFamily: 'Oswald, sans-serif' }}>
+    <footer className="py-8 text-white" style={{ backgroundColor: '#3A2E44', fontFamily: 'Oswald, sans-serif' }}>
       <div className="container mx-auto px-4 max-w-7xl">
         {/* Sezione principale */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 mb-8">
@@ -11,13 +11,13 @@ const Footer = () => {
           <div>
             <Link to="/" className="inline-block mb-4">
               <img 
-                src="/Asti/logo_g80.png" 
-                alt="G80 Sport" 
+                src="logo_g80.png"
+                alt="G80 SportLogo" 
                 className="h-14 md:h-18 w-auto object-contain"
               />
             </Link>
             <p className="text-white/90 mb-6 text-lg md:text-xl leading-relaxed">
-              Il tuo punto di riferimento per lo sport ad Asti.
+              Il tuo punto di riferimento per il noleggio di attrezzatura invernale ad Asti.
             </p>
             {/* Social Media */}
             <div className="flex gap-4">
@@ -48,6 +48,16 @@ const Footer = () => {
                     <p>Asti, 14100</p>
                   </div>
                 </li>
+                <li className="flex items-center gap-3">
+                  <a 
+                    href="https://www.youtube.com/watch?v=qe8PSHjPzuM" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-base md:text-lg text-white/90 hover:text-white transition-colors group"
+                  >
+      
+                  </a>
+                </li>
               </ul>
             </div>
 
@@ -65,8 +75,8 @@ const Footer = () => {
                 </li>
                 <li className="flex items-center gap-3">
                   <Phone className="h-6 w-6 flex-shrink-0" />
-                  <a href="tel:+390141530116" className="text-base md:text-lg hover:text-white transition-colors font-semibold">
-                    +39 0141 530116
+                  <a href="tel:+39 0141530116" className="text-base md:text-lg hover:text-white transition-colors font-semibold">
+                    +39 0141530116
                   </a>
                 </li>
               </ul>
@@ -75,27 +85,25 @@ const Footer = () => {
         </div>
 
         {/* Separatore */}
-        <div className="border-t-2 border-white/20 my-8"></div>
+        <div className="border-t-2 border-white/20 my-4"></div>
 
-        {/* Copyright e P.IVA */}
-        <div className="text-center mb-6">
+        {/* Copyright */}
+        <div className="text-center mb-2">
           <p className="text-white/80 text-base md:text-lg mb-2">
-            © 2025 Nollix. Tutti i diritti riservati.
+            © 2026 Nollix. Tutti i diritti riservati.
           </p>
-          <p className="text-white/70 text-sm md:text-base">
-            P.IVA: 01589790052
-          </p>
+          <p class="text-white/70 text-sm md:text-base"> P.IVA: 01589790052 </p>
         </div>
 
         {/* Powered by Nollix */}
-        <div className="border-t-2 border-white/20 pt-2">
-          <div className="flex flex-col md:flex-row items-center justify-center gap-3">
-            <span className="text-white/70 text-sm md:text-base">Powered by</span>
-            <a href="https://www.nollix.it" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+        <div className="border-t-2 border-white/20 pt-0 pb-0">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-2">
+            <span className="text-white/70 text-xs md:text-sm">Powered by</span>
+            <a href="https://www.nollix.it" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:opacity-80 transition-opacity">
               <img 
                 src="/Logo_Nollix_Bianco.png" 
                 alt="Nollix Logo" 
-                className="h-16 md:h-20 w-auto object-contain"
+                className="h-32 md:h-40 w-auto object-contain"
               />
             </a>
           </div>

@@ -290,6 +290,22 @@ const handler = async (req: Request): Promise<Response> => {
     const minStartDate = new Date(Math.min(...startDates.map(d => d.getTime())));
     console.log('[CREATE-REFUND-REQUEST] ✅ Min start date:', minStartDate.toISOString());
 
+    // ✅ 6.5. RECUPERA ORE_RIMBORSO_CONSENTITE DA SHOP_SETTINGS
+    console.log('[CREATE-REFUND-REQUEST] ⚙️ Step 6.5: Fetching refund hours from shop settings');
+    const { data: shopSettings, error: shopSettingsError } = await supabaseAdmin
+      .from('shop_settings')
+      .select('ore_rimborso_consentite')
+      .maybeSingle();
+
+    if (shopSettingsError) {
+      console.error('[CREATE-REFUND-REQUEST] ⚠️ Error fetching shop settings:', shopSettingsError);
+      // Non blocchiamo, usiamo il valore di default
+    }
+
+    // Usa il valore dinamico o fallback a 24 ore per retrocompatibilità
+    const refundHours = shopSettings?.ore_rimborso_consentite ?? 24;
+    console.log('[CREATE-REFUND-REQUEST] ✅ Refund hours configured:', refundHours);
+
     // ✅ 7. VERIFICA SE LA PRENOTAZIONE È INIZIATA (STESSO GIORNO)
     console.log('[CREATE-REFUND-REQUEST] ⏰ Step 7: Checking if booking has started');
     const now = new Date();
@@ -318,9 +334,10 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('[CREATE-REFUND-REQUEST] 💰 Step 8: Calculating refund percentage');
     const hoursUntilStart = (minStartDate.getTime() - now.getTime()) / (1000 * 60 * 60);
     console.log('[CREATE-REFUND-REQUEST] ⏱️ Hours until start:', hoursUntilStart);
+    console.log('[CREATE-REFUND-REQUEST] ⏱️ Refund threshold hours:', refundHours);
 
     let refundPercentage: number;
-    if (hoursUntilStart >= 48) {
+    if (hoursUntilStart >= refundHours) {
       refundPercentage = 1.0; // 100%
     } else if (hoursUntilStart > 0) {
       refundPercentage = 0.5; // 50%

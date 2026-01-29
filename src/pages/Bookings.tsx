@@ -80,6 +80,24 @@ export default function Bookings() {
     });
   }, []);
 
+  // Fetch shop settings for ore_rimborso_consentite
+  const { data: shopSettings } = useQuery({
+    queryKey: ['shop_settings', 'ore_rimborso_consentite'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('shop_settings')
+        .select('ore_rimborso_consentite')
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error loading shop settings:', error);
+        return { ore_rimborso_consentite: null };
+      }
+      
+      return data || { ore_rimborso_consentite: null };
+    },
+  });
+
   const { data: bookings = [], isLoading } = useQuery({
     queryKey: ["bookings", userId, filter],
     queryFn: async () => {
@@ -786,12 +804,13 @@ export default function Bookings() {
 
   // Calcola la percentuale di rimborso in base alla data
   const calculateRefundPercentage = (startDate: string | null) => {
-    if (!startDate) return null;
+    if (!startDate || !shopSettings?.ore_rimborso_consentite) return null;
     const start = new Date(startDate);
     const now = new Date();
     const hoursUntilStart = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
+    const refundHours = shopSettings.ore_rimborso_consentite;
     
-    if (hoursUntilStart >= 48) return 100;
+    if (hoursUntilStart >= refundHours) return 100;
     if (hoursUntilStart > 0) return 50;
     return null;
   };
@@ -979,8 +998,8 @@ export default function Bookings() {
                 )}
               </div>
 
-              {/* IMPORTANTE: Il rimborso può essere richiesto SOLO ED ESCLUSIVAMENTE se lo status è 'confirmed' */}
-              {selected.status === 'confirmed' && !refundsByBookingId.has(selected.id) && (() => {
+              {/* IMPORTANTE: Il rimborso può essere richiesto SOLO ED ESCLUSIVAMENTE se lo status è 'confirmed' e ore_rimborso_consentite è presente */}
+              {selected.status === 'confirmed' && !refundsByBookingId.has(selected.id) && shopSettings?.ore_rimborso_consentite && (() => {
                 // Verifica che TUTTI i prodotti siano in stato "idle" o "toPickup"
                 // Gli status possibili sono: idle, toPickup, pickedUp, returned
                 // Se almeno uno è in uno stato diverso (pickedUp, returned), il pulsante deve essere disabilitato
@@ -1110,8 +1129,8 @@ export default function Bookings() {
                           </div>
                           <div className="text-sm text-blue-700 mt-1">
                             {refundPercentage === 100 
-                              ? "Rimborso totale: la prenotazione è almeno 24 ore prima dell'inizio."
-                              : "Rimborso parziale: la prenotazione è entro le 24 ore dall'inizio."}
+                              ? `Rimborso totale: la prenotazione è almeno ${shopSettings?.ore_rimborso_consentite || 24} ore prima dell'inizio.`
+                              : `Rimborso parziale: la prenotazione è entro le ${shopSettings?.ore_rimborso_consentite || 24} ore dall'inizio.`}
                           </div>
                         </div>
                       );

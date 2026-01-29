@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -146,9 +147,17 @@ const AuthForm = ({
             style={{ borderColor: '#5F5F5F' }}
           />
           <Label htmlFor="terms" className="text-sm leading-relaxed cursor-pointer" style={{ fontFamily: 'Oswald, sans-serif', color: '#374151' }}>
-            Accetto i{" "}
-            <a href="#" className="text-[#2563EB] hover:underline font-semibold">termini di servizio</a> e la{" "}
-            <a href="#" className="text-[#2563EB] hover:underline font-semibold">privacy policy</a> *
+            Accetto l'{" "}
+            <Link 
+              to="/privacy-policy" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#2563EB] hover:underline font-semibold"
+              onClick={(e) => e.stopPropagation()}
+            >
+              informativa sulla privacy
+            </Link>{" "}
+            *
           </Label>
         </div>
       )}

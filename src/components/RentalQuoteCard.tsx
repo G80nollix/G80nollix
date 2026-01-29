@@ -77,21 +77,21 @@ const RentalQuoteCard: React.FC<RentalQuoteCardProps> = ({
   const [closedShopAlertData, setClosedShopAlertData] = useState<{ date: Date; nextDay: Date } | null>(null);
   const [closedShopWarningAcknowledged, setClosedShopWarningAcknowledged] = useState(false);
   
-  // Carica le impostazioni del negozio per l'anticipo prenotazione
+  // Carica le impostazioni del negozio per l'anticipo prenotazione e ore rimborso
   const { data: shopSettings } = useQuery({
     queryKey: ['shop_settings'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('shop_settings')
-        .select('anticipo_prenotazioneGiorni')
+        .select('anticipo_prenotazioneGiorni, ore_rimborso_consentite')
         .maybeSingle();
       
       if (error) {
         console.error('Error loading shop settings:', error);
-        return { anticipo_prenotazioneGiorni: 0 };
+        return { anticipo_prenotazioneGiorni: 0, ore_rimborso_consentite: null };
       }
       
-      return data || { anticipo_prenotazioneGiorni: 0 };
+      return data || { anticipo_prenotazioneGiorni: 0, ore_rimborso_consentite: null };
     },
   });
   
@@ -1496,20 +1496,38 @@ const RentalQuoteCard: React.FC<RentalQuoteCardProps> = ({
 
     setLoadingRelatedProducts(true);
     try {
-      // Step 1: Find all product_related entries for the current variant
-      console.log('[RentalQuoteCard] Step 1: Cercando product_related per variantId:', variantId, 'tipo:', typeof variantId);
+      // Step 1: Ottenere id_product dalla variante selezionata
+      console.log('[RentalQuoteCard] Step 1: Recupero id_product dalla variante:', variantId);
+      const { data: currentVariant, error: variantError } = await supabase
+        .from('product_variants')
+        .select('id_product')
+        .eq('id', variantId)
+        .single();
+
+      if (variantError || !currentVariant) {
+        console.error('[RentalQuoteCard] Error loading variant:', variantError);
+        setRelatedProducts([]);
+        setRelatedProductsAvailability(new Map());
+        return { hasAvailableProducts: false, totalProducts: 0 };
+      }
+
+      const currentProductId = currentVariant.id_product;
+      console.log('[RentalQuoteCard] Step 1 risultato: id_product =', currentProductId);
+
+      // Step 2: Find product_related entry for the current product
+      console.log('[RentalQuoteCard] Step 2: Cercando product_related per id_product:', currentProductId);
       const { data: currentProductRelated, error: error1 } = await supabase
         .from('product_related')
-        .select('id_related, id_product_variant')
-        .eq('id_product_variant', variantId);
+        .select('id_related, id_product')
+        .eq('id_product', currentProductId);
 
-      console.log('[RentalQuoteCard] Step 1 risultato:', {
+      console.log('[RentalQuoteCard] Step 2 risultato:', {
         currentProductRelated,
         error: error1,
         count: currentProductRelated?.length || 0,
-        variantIdCercato: variantId,
+        productIdCercato: currentProductId,
         entriesTrovate: currentProductRelated?.map(pr => ({
-          id_product_variant: pr.id_product_variant,
+          id_product: pr.id_product,
           id_related: pr.id_related,
           tipo_id_related: typeof pr.id_related
         }))
@@ -1523,70 +1541,39 @@ const RentalQuoteCard: React.FC<RentalQuoteCardProps> = ({
       }
 
       if (!currentProductRelated || currentProductRelated.length === 0) {
-        console.log('[RentalQuoteCard] Nessuna entry in product_related per questa variante. Nessun prodotto correlato.');
+        console.log('[RentalQuoteCard] Nessuna entry in product_related per questo prodotto. Nessun prodotto correlato.');
         setRelatedProducts([]);
         setRelatedProductsAvailability(new Map());
         return { hasAvailableProducts: false, totalProducts: 0 };
       }
 
-      // Step 2: Get all id_related values
+      // Step 3: Get all id_related values
       const relatedIds = currentProductRelated.map(pr => pr.id_related);
-      console.log('[RentalQuoteCard] Step 2: id_related trovati:', relatedIds, 'tipo:', relatedIds.map(id => typeof id));
+      console.log('[RentalQuoteCard] Step 3: id_related trovati:', relatedIds, 'tipo:', relatedIds.map(id => typeof id));
 
-      // Step 3: Find all other product_related entries with the same id_related but different id_product_variant
-      console.log('[RentalQuoteCard] Step 3: Cercando altre varianti con gli stessi id_related...', {
+      // Step 4: Find all other products with the same id_related (excluding current product)
+      console.log('[RentalQuoteCard] Step 4: Cercando altri prodotti con gli stessi id_related...', {
         relatedIds,
-        variantIdDaEscludere: variantId,
-        tipoVariantId: typeof variantId
+        productIdDaEscludere: currentProductId
       });
       
-      // Prima verifica quante entry ci sono con questi id_related (senza escludere la variante corrente)
-      const { data: allRelatedEntries, error: allError } = await supabase
-        .from('product_related')
-        .select('id_product_variant, id_related')
-        .in('id_related', relatedIds);
-      
-      console.log('[RentalQuoteCard] Step 3a: Tutte le entry con questi id_related (prima del filtro):', {
-        allRelatedEntries,
-        count: allRelatedEntries?.length || 0,
-        error: allError
-      });
-      
-      // Prova prima senza la join per vedere se trova le entry
-      const { data: relatedEntriesWithoutJoin, error: testError } = await supabase
-        .from('product_related')
-        .select('id_product_variant, id_related')
-        .in('id_related', relatedIds)
-        .neq('id_product_variant', variantId);
-      
-      console.log('[RentalQuoteCard] Step 3b: Entry trovate senza join:', {
-        relatedEntriesWithoutJoin,
-        count: relatedEntriesWithoutJoin?.length || 0,
-        error: testError
-      });
-      
-      const { data: relatedVariants, error: error2 } = await supabase
+      const { data: relatedProducts, error: error2 } = await supabase
         .from('product_related')
         .select(`
-          id_product_variant,
+          id_product,
           id_related,
-          product_variants(
+          products(
             id,
-            id_product,
-            deposit,
-            products(
-              id,
-              name,
-              description,
-              images
-            )
+            name,
+            description,
+            images
           )
         `)
         .in('id_related', relatedIds)
-        .neq('id_product_variant', variantId);
+        .neq('id_product', currentProductId);
 
-      console.log('[RentalQuoteCard] Step 3 risultato:', {
-        relatedVariants,
+      console.log('[RentalQuoteCard] Step 4 risultato:', {
+        relatedProducts,
         error: error2,
         errorDetails: error2 ? {
           message: error2.message,
@@ -1594,191 +1581,76 @@ const RentalQuoteCard: React.FC<RentalQuoteCardProps> = ({
           hint: error2.hint,
           code: error2.code
         } : null,
-        count: relatedVariants?.length || 0,
-        variantIdsTrovati: relatedVariants?.map(rv => ({
-          id_product_variant: rv.id_product_variant,
-          id_related: rv.id_related,
-          productName: rv.product_variants?.products?.name,
-          variantId: rv.product_variants?.id
+        count: relatedProducts?.length || 0,
+        productIdsTrovati: relatedProducts?.map(rp => ({
+          id_product: rp.id_product,
+          id_related: rp.id_related,
+          productName: rp.products?.name
         }))
       });
-      
-      // Se la query con join fallisce, prova a caricare i dati separatamente
-      if (error2 || !relatedVariants || relatedVariants.length === 0) {
-        console.log('[RentalQuoteCard] Step 3 fallito, provo a caricare i dati separatamente...');
-        
-        if (relatedEntriesWithoutJoin && relatedEntriesWithoutJoin.length > 0) {
-          const variantIds = relatedEntriesWithoutJoin.map(e => e.id_product_variant);
-          console.log('[RentalQuoteCard] Caricamento varianti separate:', variantIds);
-          
-          // Carica le varianti separatamente
-          const { data: variantsData, error: variantsError } = await supabase
-            .from('product_variants')
-            .select(`
-              id,
-              id_product,
-              deposit,
-              products(
-                id,
-                name,
-                description,
-                images
-              )
-            `)
-            .in('id', variantIds);
-          
-          console.log('[RentalQuoteCard] Varianti caricate separatamente:', {
-            variantsData,
-            variantsError: variantsError ? {
-              message: variantsError.message,
-              details: variantsError.details,
-              hint: variantsError.hint,
-              code: variantsError.code
-            } : null,
-            count: variantsData?.length || 0
-          });
-          
-          if (variantsData && variantsData.length > 0) {
-            // Ricostruisci la struttura come se fosse venuta dalla join
-            const reconstructedVariants = relatedEntriesWithoutJoin.map(entry => {
-              const variant = variantsData.find(v => v.id === entry.id_product_variant);
-              return {
-                id_product_variant: entry.id_product_variant,
-                id_related: entry.id_related,
-                product_variants: variant || null
-              };
-            }).filter(rv => rv.product_variants !== null); // Filtra solo quelle con variante valida
-            
-            console.log('[RentalQuoteCard] Varianti ricostruite:', reconstructedVariants);
-            
-            // Usa le varianti ricostruite invece di quelle dalla join
-            const transformedProducts = reconstructedVariants.map((rv: any) => ({
-              variantId: rv.id_product_variant,
-              relatedId: rv.id_related,
-              variant: rv.product_variants,
-              product: rv.product_variants?.products
-            }));
-            
-            console.log('[RentalQuoteCard] Step 4: Prodotti correlati trasformati (metodo alternativo):', {
-              count: transformedProducts.length,
-              products: transformedProducts.map(p => ({
-                variantId: p.variantId,
-                productName: p.product?.name,
-                productId: p.product?.id
-              }))
-            });
-            
-            // Continua con la verifica disponibilità...
-            const availabilityMap = new Map<string, boolean>();
-            const startDateStr = toItalianISOString(startDate!);
-            const endDateStr = toItalianISOString(endDate!);
 
-            // ID dello stato "Noleggiabile" - solo queste unità possono essere prenotate
-            const rentableStatusId = '2a5f05a8-6dbe-4246-ac06-ffe869efab8b';
-
-            for (const relatedProduct of transformedProducts) {
-              try {
-                // Carica TUTTE le unità con status "Noleggiabile" per questa variante (non solo 1)
-                const { data: units, error: unitsError } = await supabase
-                  .from('product_units')
-                  .select('id')
-                  .eq('id_product_variant', relatedProduct.variantId)
-                  .eq('id_product_status', rentableStatusId);
-
-                if (unitsError || !units || units.length === 0) {
-                  availabilityMap.set(relatedProduct.variantId, false);
-                  continue;
-                }
-
-                const unitIds = units.map((u: any) => u.id);
-                const totalUnits = unitIds.length;
-
-                // Carica i booking_details per queste unità usando la stessa RPC del prodotto principale
-                const { data: bookingDetails, error: detailsError } = await supabase
-                  .rpc('get_booking_details_dates', {
-                    p_unit_ids: unitIds
-                  });
-
-                if (detailsError) {
-                  // Se c'è un errore ma ci sono unità, considera disponibile (fallback conservativo)
-                  availabilityMap.set(relatedProduct.variantId, totalUnits > 0);
-                  continue;
-                }
-
-                // Calcola le unità disponibili usando la stessa logica di maxAvailableUnitsForPeriod
-                const bookedUnitIdsInPeriod = new Set<string>();
-                
-                if (bookingDetails && Array.isArray(bookingDetails) && bookingDetails.length > 0) {
-                  bookingDetails.forEach((detail: any) => {
-                    if (!detail.start_date || !detail.end_date || !detail.unit_id) {
-                      return; // Skip invalid details
-                    }
-                    
-                    try {
-                      const detailStart = parseISO(detail.start_date);
-                      const detailEnd = parseISO(detail.end_date);
-                      const unitId = String(detail.unit_id);
-                      
-                      // Normalizza le date per il confronto (solo la parte data, senza ora)
-                      const detailStartDate = new Date(detailStart.getFullYear(), detailStart.getMonth(), detailStart.getDate());
-                      const detailEndDate = new Date(detailEnd.getFullYear(), detailEnd.getMonth(), detailEnd.getDate());
-                      const periodStartDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-                      const periodEndDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
-                      
-                      // Verifica se questa prenotazione si sovrappone al periodo selezionato
-                      if (detailStartDate <= periodEndDate && detailEndDate >= periodStartDate) {
-                        bookedUnitIdsInPeriod.add(unitId);
-                      }
-                    } catch (error) {
-                      console.error('[RentalQuoteCard] Errore nel parsing date booking_detail (fallback):', error, detail);
-                    }
-                  });
-                }
-                
-                // Il numero massimo di unità prenotabili è il totale unità meno quelle già prenotate
-                const availableUnits = totalUnits - bookedUnitIdsInPeriod.size;
-                const isAvailable = availableUnits > 0;
-
-                availabilityMap.set(relatedProduct.variantId, isAvailable);
-              } catch (error) {
-                console.error('[RentalQuoteCard] Errore nel controllo disponibilità (fallback):', error);
-                availabilityMap.set(relatedProduct.variantId, false);
-              }
-            }
-
-            setRelatedProducts(transformedProducts);
-            setRelatedProductsAvailability(availabilityMap);
-            
-            const hasAvailableProducts = Array.from(availabilityMap.values()).some(available => available === true);
-            
-            return { hasAvailableProducts, totalProducts: transformedProducts.length };
-          }
-        }
-        
-        // Se siamo qui, il fallback non ha funzionato, restituisci errore
-        console.error('[RentalQuoteCard] Fallback fallito, nessun prodotto correlato caricato');
-        setRelatedProducts([]);
-        setRelatedProductsAvailability(new Map());
-        return { hasAvailableProducts: false, totalProducts: 0 };
-      }
-
-      // Se la query con join ha funzionato, continua con il flusso normale
       if (error2) {
-        console.error('[RentalQuoteCard] Error loading related variants:', error2);
+        console.error('[RentalQuoteCard] Error loading related products:', error2);
         setRelatedProducts([]);
         setRelatedProductsAvailability(new Map());
         return { hasAvailableProducts: false, totalProducts: 0 };
       }
 
-      // Step 4: Transform and check availability for each product
-      const transformedProducts = (relatedVariants || []).map((rv: any) => ({
-        variantId: rv.id_product_variant,
-        relatedId: rv.id_related,
-        variant: rv.product_variants,
-        product: rv.product_variants?.products
+      if (!relatedProducts || relatedProducts.length === 0) {
+        console.log('[RentalQuoteCard] Nessun prodotto correlato trovato.');
+        setRelatedProducts([]);
+        setRelatedProductsAvailability(new Map());
+        return { hasAvailableProducts: false, totalProducts: 0 };
+      }
+
+      // Step 5: Per ogni prodotto correlato, recuperare TUTTE le varianti
+      const relatedProductIds = relatedProducts.map(rp => rp.id_product);
+      console.log('[RentalQuoteCard] Step 5: Recupero tutte le varianti per i prodotti correlati:', relatedProductIds);
+
+      const { data: allRelatedVariants, error: variantsError } = await supabase
+        .from('product_variants')
+        .select(`
+          id,
+          id_product,
+          deposit,
+          products(
+            id,
+            name,
+            description,
+            images
+          )
+        `)
+        .in('id_product', relatedProductIds);
+
+      console.log('[RentalQuoteCard] Step 5 risultato:', {
+        allRelatedVariants,
+        error: variantsError,
+        count: allRelatedVariants?.length || 0
+      });
+
+      if (variantsError) {
+        console.error('[RentalQuoteCard] Error loading related variants:', variantsError);
+        setRelatedProducts([]);
+        setRelatedProductsAvailability(new Map());
+        return { hasAvailableProducts: false, totalProducts: 0 };
+      }
+
+      if (!allRelatedVariants || allRelatedVariants.length === 0) {
+        console.log('[RentalQuoteCard] Nessuna variante trovata per i prodotti correlati.');
+        setRelatedProducts([]);
+        setRelatedProductsAvailability(new Map());
+        return { hasAvailableProducts: false, totalProducts: 0 };
+      }
+
+      // Step 6: Trasformare i dati per il formato atteso
+      const transformedProducts = allRelatedVariants.map((variant: any) => ({
+        variantId: variant.id,
+        relatedId: relatedProducts.find(rp => rp.id_product === variant.id_product)?.id_related,
+        variant: variant,
+        product: variant.products
       }));
 
-      console.log('[RentalQuoteCard] Step 4: Prodotti correlati trasformati:', {
+      console.log('[RentalQuoteCard] Step 6: Prodotti correlati trasformati:', {
         count: transformedProducts.length,
         products: transformedProducts.map(p => ({
           variantId: p.variantId,
@@ -1787,7 +1659,7 @@ const RentalQuoteCard: React.FC<RentalQuoteCardProps> = ({
         }))
       });
 
-      // Step 5: Verifica disponibilità per ogni prodotto correlato usando la stessa logica del prodotto principale
+      // Step 7: Verifica disponibilità per ogni variante correlata usando la stessa logica del prodotto principale
       const availabilityMap = new Map<string, boolean>();
       const startDateStr = toItalianISOString(startDate);
       const endDateStr = toItalianISOString(endDate);
@@ -2564,6 +2436,14 @@ const RentalQuoteCard: React.FC<RentalQuoteCardProps> = ({
           ) : (
             <div className="text-center text-sm text-green-600 mt-2 p-2 bg-green-50 rounded">
               <span>✅ Questo articolo non richiede cauzione</span>
+              {shopSettings?.ore_rimborso_consentite && (
+                <p className="text-xs text-gray-900 mt-2 leading-relaxed">
+                  <span className="font-semibold">Politica di rimborso:</span>{" "}
+                  <span className="font-medium">100%</span> entro le{" "}
+                  <span className="font-medium">{shopSettings.ore_rimborso_consentite} ore</span>,{" "}
+                  <span className="font-medium">50%</span> oltre tale termine
+                </p>
+              )}
             </div>
           )
         )}

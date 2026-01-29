@@ -14,6 +14,8 @@ import AuthPage from "./pages/AuthPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import Dashboard from "./pages/Dashboard";
 import FAQ from "./pages/FAQ";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import CookiePolicy from "./pages/CookiePolicy";
 import NotFound from "./pages/NotFound";
 import ProductDetail from "./pages/ProductDetail";
 import ProductSuccess from "./pages/ProductSuccess";
@@ -91,6 +93,8 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/bookings" element={<Bookings />} />
               <Route path="/faq" element={<FAQ />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/cookie-policy" element={<CookiePolicy />} />
               <Route path="/admin/catalog" element={<Catalog />} />
               <Route path="/admin/variants/:productId" element={
                 <AdminProtectedRoute>

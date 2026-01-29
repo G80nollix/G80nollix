@@ -30,6 +30,58 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // ✅ 1. VERIFICA AUTENTICAZIONE
+    console.log('[STRIPE CHECKOUT] 🔐 Step 1: Verifying authentication');
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('[STRIPE CHECKOUT] ❌ No authorization header');
+      return new Response(JSON.stringify({ 
+        error: 'Autenticazione richiesta',
+        success: false 
+      }), {
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    console.log('[STRIPE CHECKOUT] 🔑 Token extracted, length:', token.length);
+    
+    // Initialize Supabase client for JWT verification
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUP_PUB_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+
+    if (authError || !user) {
+      console.error('[STRIPE CHECKOUT] ❌ Authentication failed:', {
+        authError: authError?.message,
+        hasUser: !!user
+      });
+      return new Response(JSON.stringify({ 
+        error: 'Autenticazione richiesta',
+        success: false 
+      }), {
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      });
+    }
+
+    console.log('[STRIPE CHECKOUT] ✅ User authenticated:', {
+      userId: user.id,
+      email: user.email
+    });
+
+    // ✅ 2. VALIDA INPUT
+    console.log('[STRIPE CHECKOUT] 📝 Step 2: Validating input');
     const { bookingId }: CreateCheckoutRequest = await req.json();
     
     if (!bookingId) {
@@ -70,6 +122,28 @@ const handler = async (req: Request): Promise<Response> => {
         },
       });
     }
+
+    // ✅ 3. VERIFICA OWNERSHIP - Il booking deve appartenere all'utente autenticato
+    console.log('[STRIPE CHECKOUT] 🔒 Step 3: Verifying booking ownership');
+    if (booking.user_id !== user.id) {
+      console.error('[STRIPE CHECKOUT] ❌ Unauthorized access attempt:', {
+        authenticatedUserId: user.id,
+        bookingUserId: booking.user_id,
+        bookingId: bookingId
+      });
+      return new Response(JSON.stringify({ 
+        error: 'Non autorizzato ad accedere a questa prenotazione',
+        success: false 
+      }), {
+        status: 403,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      });
+    }
+
+    console.log('[STRIPE CHECKOUT] ✅ Booking ownership verified');
 
     // Verify booking is in cart
     if (!booking.cart) {
@@ -161,18 +235,17 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    // Get shop settings for base URL
+    const { data: shopSettings } = await supabaseAdmin
+      .from('shop_settings')
+      .select('base_url')
+      .maybeSingle();
 
-        // Get shop settings for base URL
-        const { data: shopSettings } = await supabaseAdmin
-        .from('shop_settings')
-        .select('base_url')
-        .maybeSingle();
-  
-      // Get base URL for success/cancel URLs
-      const baseUrl = (shopSettings?.base_url || 'https://g80.nollix.it/').replace(/\/$/, ''); // Remove trailing slash
-      const successUrl = `${baseUrl}/payment-processing?session_id={CHECKOUT_SESSION_ID}`;
-      const cancelUrl = `${baseUrl}/cart?canceled=true`;
-      
+    // Get base URL for success/cancel URLs
+    const baseUrl = (shopSettings?.base_url || 'https://noleggioscicerreto.it/').replace(/\/$/, ''); // Remove trailing slash
+    const successUrl = `${baseUrl}/payment-processing?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${baseUrl}/cart?canceled=true`;
+
     // Build line items for Stripe (formato URL-encoded)
     const lineItemsParams: string[] = [];
     bookingDetails.forEach((detail: any, index: number) => {

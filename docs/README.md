@@ -2,8 +2,7 @@
 
 Una piattaforma moderna per il noleggio di attrezzatura sportiva, costruita con React, TypeScript e Supabase.
 
-## 🏗️ Architettura del Progetto
-
+## 🏗️ Architettura del Progettoo
 
 Il progetto è stato completamente riorganizzato seguendo i principi di ingegneria del software per garantire:
 
@@ -11,9 +10,9 @@ Il progetto è stato completamente riorganizzato seguendo i principi di ingegner
 - **Separazione delle responsabilità**: UI, business logic e data access separati.
 - **Tipizzazione forte**: TypeScript per prevenire errori a runtime
 - **Gestione dello stato centralizzata**: React Query per la gestione dello stato server
-- **Gestione errori robusta**: Error boundaries e gestione errori centralizzata
+- **Gestione errori robusta**: Error boundaries e gestione errori centralizzataa
 
-### 📁 Struttura delle Cartelle
+### 📁 Struttura delle Cartelle 
 
 ```
 src/

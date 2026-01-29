@@ -7,7 +7,7 @@ Questo documento descrive il flusso completo del pagamento dal checkout alla con
 ```
 1. Utente nel Carrello
    ↓
-2. Clicca "Paga con Stripe"
+2. Clicca "Paga"
    ↓
 3. Frontend chiama create-stripe-checkout
    ↓
@@ -36,7 +36,7 @@ Questo documento descrive il flusso completo del pagamento dal checkout alla con
 
 **Codice:**
 ```typescript
-// Utente clicca "Paga con Stripe"
+// Utente clicca "Paga"
 const stripeCheckoutMutation = useMutation({
   mutationFn: async (bookingId: string) => {
     // Chiama la Edge Function
@@ -57,7 +57,7 @@ const stripeCheckoutMutation = useMutation({
 ```
 
 **Cosa succede:**
-- L'utente clicca il pulsante "Paga con Stripe" nel carrello
+- L'utente clicca il pulsante "Paga" nel carrello
 - Il frontend chiama la Edge Function `create-stripe-checkout`
 - Passa il `bookingId` della prenotazione nel carrello
 - Riceve l'URL della checkout session Stripe
@@ -303,7 +303,7 @@ await supabaseAdmin.functions.invoke('send-email', {
 │  (Cart.tsx)     │
 └────────┬────────┘
          │
-         │ 1. Clicca "Paga con Stripe"
+         │ 1. Clicca "Paga"
          │    POST /functions/v1/create-stripe-checkout
          ▼
 ┌─────────────────────────────┐

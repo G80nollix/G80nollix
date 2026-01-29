@@ -5,7 +5,7 @@ Questo documento ti guida passo passo per verificare e risolvere eventuali probl
 ## ✅ Cosa è già implementato
 
 1. **Reindirizzamento a Stripe Hosted Checkout** ✅
-   - L'utente viene reindirizzato alla pagina di pagamento Stripe quando clicca "Paga con Stripe"
+   - L'utente viene reindirizzato alla pagina di pagamento Stripe quando clicca "Paga"
    - Implementato in `src/pages/Cart.tsx` tramite la funzione `create-stripe-checkout`
 
 2. **Aggiornamento automatico del database dopo il pagamento** ✅
@@ -80,7 +80,7 @@ Assicurati che le seguenti funzioni siano deployate:
 #### Test 1: Creazione Checkout Session
 1. Aggiungi prodotti al carrello
 2. Vai al carrello
-3. Clicca "Paga con Stripe"
+3. Clicca "Paga"
 4. **Verifica:** Dovresti essere reindirizzato a Stripe
 
 #### Test 2: Pagamento di Test
@@ -203,7 +203,7 @@ Segui questa checklist in ordine:
 
 ## 🎯 Flusso Completo del Pagamento
 
-1. **Utente clicca "Paga con Stripe"** nel carrello
+1. **Utente clicca "Paga"** nel carrello
    - Frontend chiama `create-stripe-checkout` Edge Function
    - La funzione crea una Stripe Checkout Session
    - L'utente viene reindirizzato a Stripe

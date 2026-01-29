@@ -5,6 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import FixedNavbar from "@/components/FixedNavbar";
 import Footer from "@/components/Footer";
 import { format, addDays } from "date-fns";
@@ -12,7 +20,7 @@ import { it } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingCart, CheckCircle, Trash2, Calendar, Clock, MapPin, Info, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react";
+import { ShoppingCart, CheckCircle, Trash2, Calendar, Clock, MapPin, Info, ChevronDown, ChevronUp, ArrowLeft, Loader2 } from "lucide-react";
 import { DEFAULT_IMAGES } from "@/constants";
 import { useShopDaysOff, isDateWithEnabledBooking } from '@/hooks/useShopDaysOff';
 
@@ -69,7 +77,27 @@ export default function Cart() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const [expandedInformations, setExpandedInformations] = useState<Set<string>>(new Set());
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsDialogOpen, setTermsDialogOpen] = useState(false);
   const { data: shopDaysOff = [] } = useShopDaysOff();
+  
+  // Fetch shop settings for regolamento_noleggio and ore_rimborso_consentite
+  const { data: shopSettings } = useQuery({
+    queryKey: ['shop_settings', 'regolamento_noleggio', 'ore_rimborso_consentite'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('shop_settings')
+        .select('regolamento_noleggio, ore_rimborso_consentite')
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error loading shop settings:', error);
+        return { regolamento_noleggio: null, ore_rimborso_consentite: null };
+      }
+      
+      return data || { regolamento_noleggio: null, ore_rimborso_consentite: null };
+    },
+  });
   
   // Check if payment was canceled
   useEffect(() => {
@@ -805,7 +833,8 @@ export default function Cart() {
         .from("bookings")
         .update({ 
           cart: false,
-          status: 'confirmed'
+          status: 'confirmed',
+          terms_accepted: new Date().toISOString()
         })
         .eq("id", bookingId);
 
@@ -1198,6 +1227,46 @@ export default function Cart() {
   // Remove item from cart mutation
   const removeItemMutation = useMutation({
     mutationFn: async (detailId: string) => {
+      // Prima recupera booking_id e price del booking_details prima di eliminare
+      //Prendo il booking id a cui riferisce il booking details e il suo prezzo
+      const { data: bookingDetail, error: fetchError } = await supabase
+        .from("booking_details")
+        .select("booking_id, price")
+        .eq("id", detailId)
+        .single();
+      
+      if (fetchError) {
+        console.error('Error fetching booking_details:', fetchError);
+        throw fetchError;
+      }
+      
+      if (!bookingDetail) {
+        throw new Error('Booking detail non trovato');
+      }
+      
+      const bookingId = bookingDetail.booking_id;
+      const detailPrice = Number(bookingDetail.price) || 0;
+      
+      // Recupera il price_total attuale della booking
+      const { data: booking, error: bookingFetchError } = await supabase
+        .from("bookings")
+        .select("price_total")
+        .eq("id", bookingId)
+        .single();
+      
+      if (bookingFetchError) {
+        console.error('Error fetching booking:', bookingFetchError);
+        throw bookingFetchError;
+      }
+      
+      if (!booking) {
+        throw new Error('Booking non trovata');
+      }
+      
+      // Calcola il nuovo price_total sottraendo il prezzo del booking_details eliminato
+      const currentPriceTotal = Number(booking.price_total) || 0;
+      const newPriceTotal = Math.max(0, currentPriceTotal - detailPrice); // Math.max per evitare valori negativi
+      
       // Prima elimina le informazioni associate in booking_details_informations
       const { error: infoError } = await supabase
         .from("booking_details_informations")
@@ -1218,6 +1287,41 @@ export default function Cart() {
       if (detailError) {
         console.error('Error deleting booking_details:', detailError);
         throw detailError;
+      }
+      
+      // Verifica se ci sono altri booking_details per questa booking
+      const { data: remainingDetails, error: remainingDetailsError } = await supabase
+        .from("booking_details")
+        .select("id")
+        .eq("booking_id", bookingId);
+      
+      if (remainingDetailsError) {
+        console.error('Error checking remaining booking_details:', remainingDetailsError);
+        throw remainingDetailsError;
+      }
+      
+      // Se non ci sono più booking_details, elimina anche la booking
+      if (!remainingDetails || remainingDetails.length === 0) {
+        const { error: bookingDeleteError } = await supabase
+          .from('bookings')
+          .delete()
+          .eq('id', bookingId);
+        
+        if (bookingDeleteError) {
+          console.error('Error deleting booking:', bookingDeleteError);
+          throw bookingDeleteError;
+        }
+      } else {
+        // Se ci sono ancora booking_details, aggiorna solo il price_total
+        const { error: updateError } = await supabase
+          .from('bookings')
+          .update({ price_total: newPriceTotal })
+          .eq('id', bookingId);
+        
+        if (updateError) {
+          console.error('Error updating booking price_total:', updateError);
+          throw updateError;
+        }
       }
     },
     onSuccess: () => {
@@ -1351,6 +1455,20 @@ export default function Cart() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Overlay di loading durante il checkout Stripe - copre tutta la pagina incluso header */}
+      {stripeCheckoutMutation.isPending && (
+        <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-16 h-16 text-white animate-spin mx-auto mb-4" />
+            <p className="text-white text-lg font-semibold">
+              Preparazione pagamento...
+            </p>
+            <p className="text-white/80 text-sm mt-2">
+              Reindirizzamento a Stripe in corso...
+            </p>
+          </div>
+        </div>
+      )}
       <FixedNavbar />
       <div className="flex-1 container mx-auto px-4 py-8 pt-20 md:pt-24 max-w-4xl">
         <div className="flex flex-col gap-4 mb-6">
@@ -1628,32 +1746,80 @@ export default function Cart() {
 
         {/* Summary Card */}
         <Card className="sticky bottom-0">
-          <CardHeader>
-            <CardTitle>Riepilogo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-lg font-semibold">Totale</span>
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="flex items-center justify-between text-lg">
+              <span>Riepilogo - Totale:</span>
               <span className="text-2xl font-bold" style={{ color: '#E31E24' }}>
                 €{calculateTotal().toFixed(2)}
               </span>
-            </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-1 pb-2 px-4">
+            {shopSettings?.regolamento_noleggio && (
+              <div className="flex items-start space-x-2 mb-2">
+                <Checkbox
+                  id="terms"
+                  checked={acceptedTerms}
+                  onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
+                />
+                <label
+                  htmlFor="terms"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  Accetto il{" "}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setTermsDialogOpen(true);
+                    }}
+                    className="text-blue-600 hover:text-blue-800 hover:underline underline"
+                  >
+                    regolamento e le condizioni di noleggio
+                  </button>
+                </label>
+              </div>
+            )}
+            <Dialog open={termsDialogOpen} onOpenChange={setTermsDialogOpen}>
+              <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+                <DialogHeader className="pb-4 border-b border-gray-200">
+                  <DialogTitle className="text-xl font-semibold text-gray-800">
+                    REGOLAMENTO E CONDIZIONI DI NOLEGGIO
+                  </DialogTitle>
+                </DialogHeader>
+                {shopSettings?.regolamento_noleggio ? (
+                  <div 
+                    className="pt-4 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mb-4 [&_h1]:text-gray-900 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:text-gray-800 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mb-3 [&_h3]:text-gray-800 [&_p]:mb-3 [&_p]:text-gray-700 [&_p]:leading-relaxed [&_ol]:list-decimal [&_ol]:list-outside [&_ol]:ml-6 [&_ol]:space-y-2 [&_ul]:list-disc [&_ul]:list-outside [&_ul]:ml-6 [&_ul]:space-y-2 [&_li]:mb-1 [&_li]:text-gray-700 [&_span]:text-gray-600 [&_a]:text-blue-600 [&_a]:hover:text-blue-800 [&_a]:underline"
+                    dangerouslySetInnerHTML={{ __html: shopSettings.regolamento_noleggio }}
+                  />
+                ) : (
+                  <div className="space-y-5 text-sm leading-relaxed pt-4">
+                    <p className="text-gray-500 text-center">Caricamento contenuto...</p>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
             <Button
               onClick={handleStripeCheckout}
-              disabled={stripeCheckoutMutation.isPending}
-              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white py-6 text-lg font-semibold"
+              disabled={stripeCheckoutMutation.isPending || (shopSettings?.regolamento_noleggio && !acceptedTerms)}
+              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white py-4 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed mt-2"
             >
               {stripeCheckoutMutation.isPending ? (
-                "Reindirizzamento a Stripe..."
+                "Reindirizzamento al pagamento..."
               ) : (
                 <>
-                  <svg className="h-5 w-5 mr-2 inline" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 2.388 1.237 4.05 3.283 5.19 2.085 1.177 3.028 1.987 3.028 3.218 0 1.008-.84 1.545-2.12 1.545-1.688 0-4.617-.842-6.308-1.818L1.758 24c2.198 1.001 5.902 1.819 9.407 1.819 2.493 0 4.564-.491 6.104-1.649 1.624-1.188 2.465-3.023 2.465-5.347 0-2.365-1.131-4.009-3.03-5.13-1.938-1.14-2.97-1.931-2.97-3.218 0-.636.524-1.122 1.514-1.388l5.407-1.828L13.976 9.15z"/>
-                  </svg>
-                  Paga con Stripe
+                  Paga
                 </>
               )}
             </Button>
+            {shopSettings?.ore_rimborso_consentite && (
+              <p className="text-xs text-gray-900 mt-3 text-center leading-relaxed">
+                <span className="font-semibold">Politica di rimborso:</span>{" "}
+                <span className="font-medium">100%</span> entro le{" "}
+                <span className="font-medium">{shopSettings.ore_rimborso_consentite} ore</span> dalla prenotazione,{" "}
+                <span className="font-medium">50%</span> oltre tale termine
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

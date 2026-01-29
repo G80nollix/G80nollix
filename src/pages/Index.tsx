@@ -180,7 +180,7 @@ const Index = () => {
       <section className="relative overflow-hidden h-screen w-full">
         <div 
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('/Asti/Foto negozio/Facciata.jpg')" }}
+          style={{ backgroundImage: "url('/Foto negozio/Facciata.jpg')" }}
         >
         </div>
         {/* Overlay scuro per migliorare la visibilità degli elementi */}
@@ -214,7 +214,7 @@ const Index = () => {
                   }}
                 >
                   <img 
-                    src="/Asti/logo_g80.png" 
+                    src="/logo_g80.png" 
                     alt="G80 Sport" 
                     className="h-full w-auto object-contain"
                     onLoad={() => setLogoLoaded(true)}
@@ -260,7 +260,7 @@ const Index = () => {
                 >
                   <div className="flex items-center justify-center w-6 h-6 rounded-lg bg-[#B0FB58]/20">
                     <img 
-                      src="/altre/icona cornetta.png" 
+                      src="/g80/icona cornetta.png" 
                       alt="Contatti" 
                       className="h-4 w-4 object-contain"
                     />
@@ -278,7 +278,7 @@ const Index = () => {
                     >
                       <div className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-100">
                         <img 
-                          src="/altre/icona accedi.png" 
+                          src="/g80/icona accedi.png" 
                           alt="Accedi" 
                           className="h-4 w-4 object-contain"
                         />
@@ -292,7 +292,7 @@ const Index = () => {
                     >
                       <div className="flex items-center justify-center w-6 h-6 rounded-lg bg-green-100">
                         <img 
-                          src="/altre/icona registrati.png" 
+                          src="/g80/icona registrati.png" 
                           alt="Registrati" 
                           className="h-4 w-4 object-contain"
                         />
@@ -310,7 +310,7 @@ const Index = () => {
                     >
                       <div className="flex items-center justify-center w-6 h-6 rounded-lg bg-[#B0FB58]/20 relative">
                         <img 
-                          src="/altre/icona carrello.png" 
+                          src="/g80/icona carrello.png" 
                           alt="Carrello" 
                           className="h-4 w-4 object-contain"
                         />
@@ -345,7 +345,7 @@ const Index = () => {
                     >
                       {/* Icona */}
                       <img 
-                        src="/altre/icons8-sciatore-90.png" 
+                        src="/g80/icons8-sciatore-90.png" 
                         alt="Skier" 
                         className="h-8 w-auto object-contain transition-transform duration-300 group-hover:scale-110"
                       />
@@ -377,7 +377,7 @@ const Index = () => {
               }}
             >
               <img 
-                src="/Asti/logo_g80.png" 
+                src="/logo_g80.png" 
                 alt="G80 Sport" 
                 className="h-full w-auto object-contain"
                 onLoad={() => {
@@ -417,7 +417,7 @@ const Index = () => {
                   >
                     {/* Icona senza animazioni fastidiose */}
                     <img 
-                      src="/altre/icons8-sciatore-90.png" 
+                      src="/g80/icons8-sciatore-90.png" 
                       alt="Skier" 
                       className={`${heroStyles.buttonIcon} w-auto object-contain transition-transform duration-300 group-hover:scale-110`}
                     />
@@ -483,7 +483,7 @@ const Index = () => {
                 >
                   <div className={`flex items-center justify-center ${isMobile ? 'w-5 h-5' : 'w-6 h-6'} rounded-lg bg-[#B0FB58]/20`}>
                     <img 
-                      src="/altre/icona cornetta.png" 
+                      src="/g80/icona cornetta.png" 
                       alt="Contatti" 
                       className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} object-contain`}
                     />
@@ -552,7 +552,7 @@ const Index = () => {
                     >
                       <div className={`flex items-center justify-center ${isMobile ? 'w-5 h-5' : 'w-6 h-6'} rounded-lg bg-blue-100`}>
                         <img 
-                          src="/altre/icona accedi.png" 
+                          src="/g80/icona accedi.png" 
                           alt="Accedi" 
                           className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} object-contain`}
                         />
@@ -566,7 +566,7 @@ const Index = () => {
                     >
                       <div className={`flex items-center justify-center ${isMobile ? 'w-5 h-5' : 'w-6 h-6'} rounded-lg bg-green-100`}>
                         <img 
-                          src="/altre/icona registrati.png" 
+                          src="/g80/icona registrati.png" 
                           alt="Registrati" 
                           className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} object-contain`}
                         />
@@ -650,7 +650,7 @@ const Index = () => {
                       >
                         <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-[#B0FB58]/20 group-hover:bg-[#B0FB58]/30 transition-colors">
                           <img 
-                            src="/altre/icona cornetta.png" 
+                            src="/g80/icona cornetta.png" 
                             alt="Contatti" 
                             className="h-5 w-5 object-contain"
                           />
@@ -731,7 +731,7 @@ const Index = () => {
                           >
                             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 group-hover:bg-blue-200 transition-colors">
                               <img 
-                                src="/altre/icona accedi.png" 
+                                src="/g80/icona accedi.png" 
                                 alt="Accedi" 
                                 className="h-4 w-4 object-contain"
                               />
@@ -749,7 +749,7 @@ const Index = () => {
                           >
                             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-100 group-hover:bg-green-200 transition-colors">
                               <img 
-                                src="/altre/icona registrati.png" 
+                                src="/g80/icona registrati.png" 
                                 alt="Registrati" 
                                 className="h-4 w-4 object-contain"
                               />
@@ -789,7 +789,7 @@ const Index = () => {
               <div className="relative overflow-hidden rounded-2xl shadow-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-3xl">
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent z-10 group-hover:from-black/10 transition-all duration-300"></div>
                 <img 
-                  src="/Asti/Foto negozio/Logo negozio.jpg" 
+                  src="/Foto negozio/Logo negozio.jpg" 
                   alt="Logo negozio" 
                   className="w-full aspect-[4/3] object-cover transition-transform duration-700 group-hover:scale-110"
                 />
@@ -817,7 +817,7 @@ const Index = () => {
               <div className="relative overflow-hidden rounded-2xl shadow-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-3xl">
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent z-10 group-hover:from-black/10 transition-all duration-300"></div>
                 <img 
-                  src="/Asti/Foto negozio/scarponi mix.jpg" 
+                  src="/Foto negozio/scarponi mix.jpg" 
                   alt="Scarponi mix" 
                   className="w-full aspect-[4/3] object-cover transition-transform duration-700 group-hover:scale-110"
                 />
@@ -848,7 +848,7 @@ const Index = () => {
               <div className="relative overflow-hidden rounded-2xl shadow-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-3xl">
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent z-10 group-hover:from-black/10 transition-all duration-300"></div>
                 <img 
-                  src="/Asti/Foto negozio/sci noleggio.jpg" 
+                  src="/Foto negozio/sci noleggio.jpg" 
                   alt="Sci noleggio" 
                   className="w-full aspect-[4/3] object-cover transition-transform duration-700 group-hover:scale-110"
                 />
@@ -876,7 +876,7 @@ const Index = () => {
               <div className="relative overflow-hidden rounded-2xl shadow-2xl transition-all duration-300 hover:scale-[1.02] hover:shadow-3xl">
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent z-10 group-hover:from-black/10 transition-all duration-300"></div>
                 <img 
-                  src="/Asti/foto riparazione sci.jpeg" 
+                  src="/Foto negozio/foto riparazione sci.jpeg" 
                   alt="Riparazione sci" 
                   className="w-full aspect-[4/3] object-cover transition-transform duration-700 group-hover:scale-110"
                 />
@@ -940,32 +940,32 @@ const Index = () => {
               {/* Prima serie di loghi */}
               <div className="flex gap-16 items-center flex-shrink-0">
                 <img 
-                  src="/Asti/leki-logo-png_seeklogo-485832.png" 
+                  src="/leki-logo-png_seeklogo-485832.png" 
                   alt="Leki" 
                   className="h-16 md:h-20 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
                 />
                 <img 
-                  src="/Asti/Nordica_Logo_2017.svg.png" 
+                  src="/Nordica_Logo_2017.svg.png" 
                   alt="Nordica" 
                   className="h-16 md:h-20 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
                 />
                 <img 
-                  src="/Asti/Rossignol-emblem.png" 
+                  src="/Rossignol-emblem.png" 
                   alt="Rossignol" 
                   className="h-16 md:h-20 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
                 />
                 <img 
-                  src="/Asti/Salomon_group_logo.png" 
+                  src="/Salomon_group_logo.png" 
                   alt="Salomon" 
                   className="h-16 md:h-20 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
                 />
                 <img 
-                  src="/Asti/Atomic-logo.svg.png" 
+                  src="/Atomic-logo.svg.png" 
                   alt="Atomic" 
                   className="h-16 md:h-20 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
                 />
                 <img 
-                  src="/Asti/Logo_Völkl.svg.png" 
+                  src="/Logo_Völkl.svg.png" 
                   alt="Völkl" 
                   className="h-16 md:h-20 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
                 />
@@ -973,32 +973,32 @@ const Index = () => {
               {/* Seconda serie (per loop continuo) */}
               <div className="flex gap-16 items-center flex-shrink-0">
                 <img 
-                  src="/Asti/leki-logo-png_seeklogo-485832.png" 
+                  src="/leki-logo-png_seeklogo-485832.png" 
                   alt="Leki" 
                   className="h-16 md:h-20 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
                 />
                 <img 
-                  src="/Asti/Nordica_Logo_2017.svg.png" 
+                  src="/Nordica_Logo_2017.svg.png" 
                   alt="Nordica" 
                   className="h-16 md:h-20 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
                 />
                 <img 
-                  src="/Asti/Rossignol-emblem.png" 
+                  src="/Rossignol-emblem.png" 
                   alt="Rossignol" 
                   className="h-16 md:h-20 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
                 />
                 <img 
-                  src="/Asti/Salomon_group_logo.png" 
+                  src="/Salomon_group_logo.png" 
                   alt="Salomon" 
                   className="h-16 md:h-20 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
                 />
                 <img 
-                  src="/Asti/Atomic-logo.svg.png" 
+                  src="/Atomic-logo.svg.png" 
                   alt="Atomic" 
                   className="h-16 md:h-20 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
                 />
                 <img 
-                  src="/Asti/Logo_Völkl.svg.png" 
+                  src="/Logo_Völkl.svg.png" 
                   alt="Völkl" 
                   className="h-16 md:h-20 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
                 />

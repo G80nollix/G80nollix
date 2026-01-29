@@ -58,7 +58,7 @@ interface Booking {
   price_hour: number | null;
   price_month: number | null;
   deposito: number | null;
-   cart?: boolean;
+  cart?: boolean;
   // Joined data
   user_email?: string;
   user_name?: string;

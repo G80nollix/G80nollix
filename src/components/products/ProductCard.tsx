@@ -240,7 +240,7 @@ export const ProductCard = ({ product, onProductClick }: ProductCardProps) => {
                 </Badge>
               )}
               {product.delivery && (
-                <Badge variant="outline" className="flex items-center gap-1" style={{ backgroundColor: '#E31E2420', borderColor: '#E31E2460', color: '#E31E24' }}>
+                <Badge variant="outline" className="flex items-center gap-1" style={{ backgroundColor: '#E31E2420', borderColor: '#E31E2460', color: '#C01A1F' }}>
                   <Truck className="h-3 w-3" />
                   Consegna a domicilio
                 </Badge>

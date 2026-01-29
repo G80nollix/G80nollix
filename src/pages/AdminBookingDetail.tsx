@@ -6,6 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -392,7 +399,14 @@ const AdminBookingDetail = () => {
                     informations: informationsMap.get(String(detail.id)) || []
                   }));
 
-                  setBookingDetails(detailsWithInformations);
+                  // Ordina sempre per data di inizio (start_date) per mantenere l'ordine costante
+                  const sortedDetails = [...detailsWithInformations].sort((a, b) => {
+                    const dateA = new Date(a.start_date).getTime();
+                    const dateB = new Date(b.start_date).getTime();
+                    return dateA - dateB;
+                  });
+
+                  setBookingDetails(sortedDetails);
                 }
               }
             }
@@ -1118,6 +1132,77 @@ const AdminBookingDetail = () => {
     }
   };
 
+  // Funzione per cambiare lo stato di un prodotto
+  const handleStatusChange = async (detailId: string, newStatus: string) => {
+    if (!booking || !id) return;
+    
+    try {
+      setIsUpdating(true);
+      
+      // Mappa lo stato italiano allo stato del database
+      let dbStatus: string;
+      switch (newStatus) {
+        case 'DA RITIRARE':
+          dbStatus = 'toPickup';
+          break;
+        case 'RITIRATO':
+          dbStatus = 'pickedUp';
+          break;
+        case 'RICONSEGNATO':
+          dbStatus = 'returned';
+          break;
+        default:
+          dbStatus = 'toPickup';
+      }
+      
+      const { error: updateError } = await supabase
+        .from('booking_details')
+        .update({ status: dbStatus })
+        .eq('id', detailId);
+
+      if (updateError) {
+        console.error('Error updating booking_detail:', updateError);
+        toast({
+          title: "Errore",
+          description: "Errore durante l'aggiornamento dello stato del prodotto",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Successo",
+        description: `Il prodotto è stato marcato come ${newStatus.toLowerCase()}`,
+      });
+
+      // Ricarica i dati per aggiornare la visualizzazione
+      fetchBooking();
+    } catch (err) {
+      console.error('Error in handleStatusChange:', err);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante l'aggiornamento dello stato",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Funzione per ottenere lo stato visualizzato dal database
+  const getDisplayStatus = (status: string | null | undefined): string => {
+    if (!status || status === 'to_pickup' || status === 'toPickup' || status === 'idle') {
+      return 'DA RITIRARE';
+    }
+    if (status === 'picked_up' || status === 'pickedUp') {
+      return 'RITIRATO';
+    }
+    if (status === 'returned') {
+      return 'RICONSEGNATO';
+    }
+    return 'DA RITIRARE';
+  };
+
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) return 'Non specificato';
     try {
@@ -1298,69 +1383,10 @@ const AdminBookingDetail = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {/* Pulsanti per ritirare/annullare tutti i prodotti */}
-                  {booking?.status === 'confirmed' && (
-                    <div className="flex gap-2 mb-4 pb-4 border-b">
-                      {areAllProductsReturned() ? (
-                        <Button
-                          disabled={true}
-                          className="flex-1 bg-purple-600 text-white opacity-50 cursor-not-allowed"
-                          size="sm"
-                        >
-                          RICONSEGNA TUTTO
-                        </Button>
-                      ) : areAllProductsPickedUp() ? (
-                        <Button
-                          onClick={handleRiconsegnaTutto}
-                          disabled={isUpdating}
-                          className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
-                          size="sm"
-                        >
-                          {isUpdating ? "Elaborazione..." : "RICONSEGNA TUTTO"}
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={handleRitiraTutto}
-                          disabled={isUpdating || areAllProductsPickedUp()}
-                          className={cn(
-                            "flex-1 bg-green-600 hover:bg-green-700 text-white",
-                            areAllProductsPickedUp() && "opacity-50 cursor-not-allowed"
-                          )}
-                          size="sm"
-                        >
-                          {isUpdating ? "Elaborazione..." : "RITIRA TUTTO"}
-                        </Button>
-                      )}
-                      {areAllProductsReturned() ? (
-                        <Button
-                          onClick={handleAnnullaRiconsegna}
-                          disabled={isUpdating}
-                          variant="outline"
-                          className="flex-1 border-red-600 text-red-600 hover:bg-red-50"
-                          size="sm"
-                        >
-                          {isUpdating ? "Elaborazione..." : "ANNULLA RICONSEGNA"}
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={handleAnnullaRitiro}
-                          disabled={isUpdating || areAllProductsToPickup()}
-                          variant="outline"
-                          className={cn(
-                            "flex-1 border-red-600 text-red-600 hover:bg-red-50",
-                            areAllProductsToPickup() && "opacity-50 cursor-not-allowed"
-                          )}
-                          size="sm"
-                        >
-                          {isUpdating ? "Elaborazione..." : "ANNULLA RITIRO"}
-                        </Button>
-                      )}
-                    </div>
-                  )}
                   <div className="space-y-4">
                     {bookingDetails.map((detail, index) => (
-                      <div key={detail.id} className="border rounded-lg p-4 bg-gray-50">
-                        <div className="flex items-center justify-between mb-3">
+                      <div key={detail.id} className="border rounded-lg p-3 bg-gray-50">
+                        <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                               Prodotto {index + 1}
@@ -1371,138 +1397,145 @@ const AdminBookingDetail = () => {
                             €{detail.price.toFixed(2)}
                           </Badge>
                         </div>
-                        <div className="space-y-3">
-                          <div>
-                            <label className="text-sm font-medium text-gray-700">Titolo prodotto</label>
-                            <p className="text-gray-900 font-medium">{detail.product_title || 'N/A'}</p>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Colonna sinistra: Info prodotto */}
+                          <div className="space-y-1.5">
                             <div>
-                              <label className="text-sm font-medium text-gray-700">Marca</label>
-                              <p className="text-gray-900">{detail.product_brand || 'N/A'}</p>
+                              <label className="text-sm font-medium text-gray-700">Titolo prodotto</label>
+                              <p className="text-base font-bold text-blue-600">{detail.product_title || 'N/A'}</p>
                             </div>
-                            <div>
-                              <label className="text-sm font-medium text-gray-700">Modello</label>
-                              <p className="text-gray-900">{detail.product_model || 'N/A'}</p>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-medium text-gray-700">Data inizio</label>
-                              <p className="text-gray-900">{formatDate(detail.start_date)}</p>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-gray-700">Data fine</label>
-                              <p className="text-gray-900">{formatDate(detail.end_date)}</p>
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium text-gray-700">Modalità</label>
-                            <p className="text-gray-900">{detail.delivery_method === 'pickup' ? 'Ritiro in sede' : 'Consegna a domicilio'}</p>
-                          </div>
-                          {(detail.ritiro_fasciaoraria_inizio || detail.riconsegna_fasciaoraria_inizio) && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {detail.ritiro_fasciaoraria_inizio && (
-                                <div>
-                                  <label className="text-sm font-medium text-gray-700">Fascia oraria ritiro</label>
-                                  <p className="text-gray-900">
-                                    {formatTime(detail.ritiro_fasciaoraria_inizio)} - {formatTime(detail.ritiro_fasciaoraria_fine)}
-                                  </p>
-                                </div>
-                              )}
-                              {detail.riconsegna_fasciaoraria_inizio && (
-                                <div>
-                                  <label className="text-sm font-medium text-gray-700">Fascia oraria riconsegna</label>
-                                  <p className="text-gray-900">
-                                    {formatTime(detail.riconsegna_fasciaoraria_inizio)} - {formatTime(detail.riconsegna_fasciaoraria_fine)}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {/* Informazioni aggiuntive dinamiche */}
-                          {detail.informations && detail.informations.length > 0 && (
-                            <div className="mt-4 pt-4 border-t">
-                              <label className="text-sm font-medium text-gray-700 mb-2 block">Informazioni Aggiuntive</label>
-                              <div className="space-y-2">
-                                {detail.informations.map((info) => {
-                                  // Parse il valore se è JSON
-                                  let displayValue: string = '';
-                                  try {
-                                    if (info.value) {
-                                      const parsed = JSON.parse(info.value);
-                                      if (Array.isArray(parsed)) {
-                                        displayValue = parsed.join(', ');
-                                      } else if (typeof parsed === 'object') {
-                                        displayValue = JSON.stringify(parsed, null, 2);
-                                      } else {
-                                        displayValue = String(parsed);
-                                      }
-                                    }
-                                  } catch {
-                                    // Se non è JSON, usa il valore direttamente
-                                    displayValue = info.value || '';
-                                  }
-
-                                  return (
-                                    <div key={info.id} className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2 text-sm">
-                                      <span className="text-gray-600 font-medium min-w-[120px]">
-                                        {info.information?.name || 'Campo'}:
-                                      </span>
-                                      <span className="text-gray-900 flex-1">
-                                        {displayValue || <span className="text-gray-400 italic">Non specificato</span>}
-                                      </span>
-                                    </div>
-                                  );
-                                })}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-sm font-medium text-gray-700">Marca</label>
+                                <p className="text-base text-gray-900">{detail.product_brand || 'N/A'}</p>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-gray-700">Modello</label>
+                                <p className="text-base text-gray-900">{detail.product_model || 'N/A'}</p>
                               </div>
                             </div>
-                          )}
-                          {detail.deposito && Number(detail.deposito) > 0 && (
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-sm font-medium text-gray-700">Data inizio</label>
+                                <p className="text-base text-gray-900">{formatDate(detail.start_date)}</p>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-gray-700">Data fine</label>
+                                <p className="text-base text-gray-900">{formatDate(detail.end_date)}</p>
+                              </div>
+                            </div>
                             <div>
-                              <label className="text-sm font-medium text-gray-700">Cauzione</label>
-                              <p className="text-gray-900">€{detail.deposito.toFixed(2)}</p>
+                              <label className="text-sm font-medium text-gray-700">Modalità</label>
+                              <p className="text-base text-gray-900">{detail.delivery_method === 'pickup' ? 'Ritiro in sede' : 'Consegna a domicilio'}</p>
                             </div>
-                          )}
-                          {/* Pulsante per ritirare/riconsegnare singolarmente il prodotto */}
-                          {booking?.status === 'confirmed' && (
-                            <div className="pt-2 mt-2 border-t">
-                              {areAllProductsReturned() ? (
-                                <Button
-                                  disabled={true}
-                                  className="w-full bg-purple-600 text-white text-xs py-1 h-7 opacity-50 cursor-not-allowed"
-                                  size="sm"
-                                >
-                                  RICONSEGNA PRODOTTO
-                                </Button>
-                              ) : (detail.status === 'picked_up' || detail.status === 'pickedUp') ? (
-                                <Button
-                                  onClick={() => handleRiconsegnaSingolo(detail.id)}
-                                  disabled={isUpdating || areAllProductsReturned()}
-                                  className={cn(
-                                    "w-full bg-purple-600 hover:bg-purple-700 text-white text-xs py-1 h-7",
-                                    areAllProductsReturned() && "opacity-50 cursor-not-allowed"
-                                  )}
-                                  size="sm"
-                                >
-                                  {isUpdating ? "Elaborazione..." : "RICONSEGNA PRODOTTO"}
-                                </Button>
-                              ) : (
-                                <Button
-                                  onClick={() => handleRitiraSingolo(detail.id)}
-                                  disabled={isUpdating || areAllProductsPickedUp()}
-                                  className={cn(
-                                    "w-full bg-green-600 hover:bg-green-700 text-white text-xs py-1 h-7",
-                                    areAllProductsPickedUp() && "opacity-50 cursor-not-allowed"
-                                  )}
-                                  size="sm"
-                                >
-                                  {isUpdating ? "Elaborazione..." : "RITIRA PRODOTTO"}
-                                </Button>
-                              )}
+                            {(detail.ritiro_fasciaoraria_inizio || detail.riconsegna_fasciaoraria_inizio) && (
+                              <>
+                                {detail.ritiro_fasciaoraria_inizio && (
+                                  <div>
+                                    <label className="text-sm font-medium text-gray-700">Fascia oraria ritiro</label>
+                                    <p className="text-base text-gray-900">
+                                      {formatTime(detail.ritiro_fasciaoraria_inizio)} - {formatTime(detail.ritiro_fasciaoraria_fine)}
+                                    </p>
+                                  </div>
+                                )}
+                                {detail.riconsegna_fasciaoraria_inizio && (
+                                  <div>
+                                    <label className="text-sm font-medium text-gray-700">Fascia oraria riconsegna</label>
+                                    <p className="text-base text-gray-900">
+                                      {formatTime(detail.riconsegna_fasciaoraria_inizio)} - {formatTime(detail.riconsegna_fasciaoraria_fine)}
+                                    </p>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                            {detail.deposito && Number(detail.deposito) > 0 && (
+                              <div>
+                                <label className="text-sm font-medium text-gray-700">Cauzione</label>
+                                <p className="text-base text-gray-900">€{detail.deposito.toFixed(2)}</p>
+                              </div>
+                            )}
+                          </div>
+                          {/* Colonna destra: Informazioni aggiuntive */}
+                          <div className="space-y-1.5">
+                            <div className="mb-1">
+                              <label className="text-sm font-medium text-gray-700">Informazioni aggiuntive</label>
                             </div>
-                          )}
+                            {detail.informations && detail.informations.length > 0 ? (
+                              detail.informations.map((info) => {
+                                // Parse il valore se è JSON
+                                let displayValue: string = '';
+                                try {
+                                  if (info.value) {
+                                    const parsed = JSON.parse(info.value);
+                                    if (Array.isArray(parsed)) {
+                                      displayValue = parsed.join(', ');
+                                    } else if (typeof parsed === 'object') {
+                                      displayValue = JSON.stringify(parsed, null, 2);
+                                    } else {
+                                      displayValue = String(parsed);
+                                    }
+                                  }
+                                } catch {
+                                  // Se non è JSON, usa il valore direttamente
+                                  displayValue = info.value || '';
+                                }
+
+                                const isNameField = info.information?.name?.toLowerCase().includes('nome') || info.information?.name?.toLowerCase().includes('name');
+                                
+                                return (
+                                  <div key={info.id}>
+                                    <label className="text-sm font-medium text-gray-700">
+                                      {info.information?.name || 'Campo'}
+                                    </label>
+                                    <p className={cn(
+                                      "text-base",
+                                      isNameField ? "font-bold text-blue-600" : "text-gray-900"
+                                    )}>
+                                      {displayValue || <span className="text-gray-400 italic">Non specificato</span>}
+                                    </p>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <p className="text-base text-gray-400 italic">Nessuna informazione aggiuntiva</p>
+                            )}
+                          </div>
                         </div>
+                        {/* Menu a tendina per modificare lo stato del prodotto */}
+                        {booking?.status === 'confirmed' && (
+                          <div className="pt-2 mt-2 border-t">
+                            <label className="text-xs font-medium text-gray-700 mb-1.5 block">
+                              Stato prodotto
+                            </label>
+                            <Select
+                              value={getDisplayStatus(detail.status)}
+                              onValueChange={(value) => handleStatusChange(detail.id, value)}
+                              disabled={isUpdating}
+                            >
+                              <SelectTrigger 
+                                className={cn(
+                                  "w-full h-9 text-sm font-medium [&>span]:flex [&>span]:items-center [&>span]:justify-center [&>span]:w-full",
+                                  getDisplayStatus(detail.status) === 'DA RITIRARE' && "bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100",
+                                  getDisplayStatus(detail.status) === 'RITIRATO' && "bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100",
+                                  getDisplayStatus(detail.status) === 'RICONSEGNATO' && "bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                                )}
+                              >
+                                <SelectValue placeholder="Seleziona stato" />
+                              </SelectTrigger>
+                              <SelectContent className="min-w-[200px]">
+                                <SelectItem value="DA RITIRARE" className="text-center cursor-pointer focus:bg-orange-50 focus:text-orange-700">
+                                  DA RITIRARE
+                                </SelectItem>
+                                <SelectItem value="RITIRATO" className="text-center cursor-pointer focus:bg-blue-50 focus:text-blue-700">
+                                  RITIRATO
+                                </SelectItem>
+                                <SelectItem value="RICONSEGNATO" className="text-center cursor-pointer focus:bg-green-50 focus:text-green-700">
+                                  RICONSEGNATO
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1799,7 +1832,7 @@ const AdminBookingDetail = () => {
             <AlertDialogDescription>
               Sei sicuro di voler annullare questa prenotazione e avviare la procedura di rimborso?
               <br /><br />
-              Verrà creata una richiesta di rimborso su Stripe e la prenotazione verrà aggiornata automaticamente.
+              Verrà creata una richiesta di rimborso e la prenotazione verrà aggiornata automaticamente.
               {booking && (
                 <div className="mt-2 p-2 bg-gray-50 rounded">
                   <p className="text-sm font-medium">Prenotazione #{booking.rifPrenotazione}</p>

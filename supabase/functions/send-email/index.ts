@@ -30,7 +30,7 @@ const handler = async (req)=>{
     console.log('[DEBUG] Sending email to:', to);
     const emailHtml = html;
     const { error } = await resend.emails.send({
-      from: 'prenotazioni@g80.nollix.it',
+      from: 'Noleggio Sci Cerreto <info@noleggioscicerreto.it>',
       to: [
         to
       ],

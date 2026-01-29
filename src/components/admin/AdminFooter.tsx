@@ -61,7 +61,7 @@ const AdminFooter = () => {
 
         <div className="border-t border-slate-600 mt-6 pt-6 text-center">
           <p className="text-gray-300 text-sm">
-            © 2025 Nollix Administration Panel. Accesso riservato agli amministratori.
+            © 2026 Nollix Administration Panel. Accesso riservato agli amministratori.
           </p>
           <p className="text-gray-400 text-xs mt-1">
             Versione 1.0 

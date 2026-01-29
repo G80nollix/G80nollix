@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import FixedNavbar from "@/components/FixedNavbar";
 import Footer from "@/components/Footer";
-import { ArrowLeft, Calendar, Clock, MapPin, Truck, Home, CheckCircle, LogIn, Shield, Plus, Copy } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, Truck, Home, CheckCircle, LogIn, Shield, Plus, Copy, Loader2 } from "lucide-react";
 import { useProduct } from "@/hooks/useProducts";
 import { useBookings } from "@/hooks/useBookings";
 import { useAuth } from "@/hooks/useAuth";
@@ -167,6 +167,153 @@ const Checkout = () => {
   
   // State per i prezzi calcolati dei prodotti correlati
   const [relatedProductsPrices, setRelatedProductsPrices] = useState<{ [variantId: string]: number }>({});
+
+  // Carica attributi informativi del prodotto per verificare se ha genere="bambino"
+  const { data: productInformativeAttributes } = useQuery({
+    queryKey: ['product_informative_attributes', newProductData?.productId],
+    queryFn: async () => {
+      if (!newProductData?.productId) return [];
+      
+      const { data, error } = await supabase
+        .from('product_informative_attribute_values')
+        .select(`
+          id_product_attribute_value,
+          product_attributes_values!inner(
+            id_product_attribute,
+            value,
+            product_attributes!inner(
+              id,
+              name,
+              unit
+            )
+          )
+        `)
+        .eq('id_product', newProductData.productId);
+      
+      if (error) {
+        console.error('Errore nel caricamento attributi informativi:', error);
+        return [];
+      }
+      
+      return (data || []).map((item: any) => ({
+        attributeId: item.product_attributes_values.product_attributes.id,
+        attributeName: item.product_attributes_values.product_attributes.name,
+        attributeUnit: item.product_attributes_values.product_attributes.unit,
+        value: item.product_attributes_values.value,
+      }));
+    },
+    enabled: !!newProductData?.productId,
+  });
+
+  // Verifica se il prodotto ha genere="bambino"
+  const isBambinoProduct = useMemo(() => {
+    if (!productInformativeAttributes || productInformativeAttributes.length === 0) {
+      return false;
+    }
+    
+    // Cerca l'attributo "Genere" (case-insensitive) con valore "bambino" (case-insensitive)
+    const genereAttribute = productInformativeAttributes.find(
+      attr => attr.attributeName?.toLowerCase() === 'genere'
+    );
+    
+    if (!genereAttribute) {
+      return false;
+    }
+    
+    return genereAttribute.value?.toLowerCase() === 'bambino';
+  }, [productInformativeAttributes]);
+
+  // Verifica se il prodotto ha genere="adulto"
+  const isAdultoProduct = useMemo(() => {
+    if (!productInformativeAttributes || productInformativeAttributes.length === 0) {
+      return false;
+    }
+    
+    // Cerca l'attributo "Genere" (case-insensitive) con valore "adulto" (case-insensitive)
+    const genereAttribute = productInformativeAttributes.find(
+      attr => attr.attributeName?.toLowerCase() === 'genere'
+    );
+    
+    if (!genereAttribute) {
+      return false;
+    }
+    
+    return genereAttribute.value?.toLowerCase() === 'adulto';
+  }, [productInformativeAttributes]);
+
+  // Calcola min e max date per bambini (oggi - 14 anni / oggi - 2 anni)
+  // Permette bambini da 2 anni compiuti fino a 13 anni e 364 giorni (non ancora 14 anni compiuti)
+  const bambinoDateLimits = useMemo(() => {
+    if (!isBambinoProduct) {
+      return { minDate: undefined, maxDate: undefined };
+    }
+    
+    const today = new Date();
+    
+    // Data massima: oggi - 2 anni (bambino di almeno 2 anni compiuti)
+    const maxDate = new Date(today);
+    maxDate.setFullYear(today.getFullYear() - 2);
+    
+    // Data minima: oggi - 14 anni (bambino che non ha ancora compiuto 14 anni)
+    // Questo permette bambini fino a 13 anni e 364 giorni
+    const minDate = new Date(today);
+    minDate.setFullYear(today.getFullYear() - 14);
+    
+    return {
+      minDate: minDate.toISOString().split('T')[0], // Formato YYYY-MM-DD
+      maxDate: maxDate.toISOString().split('T')[0], // Formato YYYY-MM-DD
+    };
+  }, [isBambinoProduct]);
+
+  // Calcola min e max date per adulti (data massima: oggi - 14 anni)
+  // Disabilita date di nascita prima di "oggi - 14 anni", quindi permette solo persone con più di 14 anni
+  const adultoDateLimits = useMemo(() => {
+    if (!isAdultoProduct) {
+      return { minDate: undefined, maxDate: undefined };
+    }
+    
+    const today = new Date();
+    
+    // Data massima: oggi - 14 anni (persona di almeno 14 anni compiuti)
+    // Non c'è data minima (non c'è limite superiore di età)
+    const maxDate = new Date(today);
+    maxDate.setFullYear(today.getFullYear() - 14);
+    
+    return {
+      minDate: undefined, // Nessun limite minimo
+      maxDate: maxDate.toISOString().split('T')[0], // Formato YYYY-MM-DD
+    };
+  }, [isAdultoProduct]);
+
+  // Funzione helper per determinare i limiti di data in base al tipo di prodotto
+  const getDateLimitsForField = (info: Information) => {
+    // Verifica se il campo è di tipo date e contiene "nascita" nel nome
+    const isBirthDateField = info.information_type?.name === 'date' && 
+                             info.name?.toLowerCase().includes('nascita');
+    
+    if (!isBirthDateField) {
+      return { minDate: undefined, maxDate: undefined };
+    }
+    
+    // Se è un prodotto bambino, usa i limiti per bambini
+    if (isBambinoProduct) {
+      return {
+        minDate: bambinoDateLimits.minDate,
+        maxDate: bambinoDateLimits.maxDate,
+      };
+    }
+    
+    // Se è un prodotto adulto, usa i limiti per adulti
+    if (isAdultoProduct) {
+      return {
+        minDate: adultoDateLimits.minDate,
+        maxDate: adultoDateLimits.maxDate,
+      };
+    }
+    
+    // Nessun limite per altri prodotti
+    return { minDate: undefined, maxDate: undefined };
+  };
 
   // Carica le impostazioni del negozio per verificare le modalità disponibili
   const { data: shopSettings, isLoading: isLoadingShopSettings } = useQuery({
@@ -1443,16 +1590,9 @@ const Checkout = () => {
     }
 
     // Filtra solo i campi obbligatori (required deve essere true)
-    // Usa un controllo robusto che gestisce sia booleani che conversioni
+    // required è sempre boolean secondo l'interfaccia Information
     const requiredInformations = informations.filter(info => {
-      // Converti a booleano in modo esplicito per gestire tutti i casi
-      if (typeof info.required === 'boolean') {
-        return info.required === true;
-      } else if (typeof info.required === 'string') {
-        return info.required.toLowerCase() === 'true';
-      }
-      // Se è null/undefined o altro, considera come false (non obbligatorio)
-      return false;
+      return info.required === true;
     });
 
     if (requiredInformations.length === 0) {
@@ -2656,6 +2796,20 @@ const Checkout = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Overlay di loading durante l'aggiunta al carrello - copre tutta la pagina incluso header */}
+      {isAddingToCart && (
+        <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-16 h-16 text-white animate-spin mx-auto mb-4" />
+            <p className="text-white text-lg font-semibold">
+              Aggiunta al carrello...
+            </p>
+            <p className="text-white/80 text-sm mt-2">
+              Attendi, stiamo elaborando la richiesta...
+            </p>
+          </div>
+        </div>
+      )}
       <FixedNavbar />
       
       <div className="container mx-auto px-4 py-8 pt-20 md:pt-24 max-w-7xl">
@@ -3128,7 +3282,9 @@ const Checkout = () => {
                                             }
                                           }));
                                         }}
-                                        error={formatValidationErrors[currentStep]?.[info.id] || validationErrors[currentStep]?.[info.id]}
+                                                  error={formatValidationErrors[currentStep]?.[info.id] || validationErrors[currentStep]?.[info.id]}
+                                                  minDate={getDateLimitsForField(info).minDate}
+                                                  maxDate={getDateLimitsForField(info).maxDate}
                                       />
                                     </div>
                                   );
@@ -3238,7 +3394,7 @@ const Checkout = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Truck className="h-5 w-5 text-purple-600" />
-                      Dettagli Ritiro
+                      Dettagli utilizzatore attrezzatura
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -3425,7 +3581,7 @@ const Checkout = () => {
                             
                             return (
                               <div className="border-t pt-4">
-                                <h4 className="text-base font-semibold text-gray-800 mb-4">Informazioni Aggiuntive</h4>
+                                <h4 className="text-base font-semibold text-gray-800 mb-4">Inserici le informazioni relative a chi utilizzerà questa attrezzatura</h4>
                                 
                                 {shouldShowSelect && (
                                   <div className="mb-4">
@@ -3530,6 +3686,8 @@ const Checkout = () => {
                                                     }));
                                                   }}
                                                   error={formatValidationErrors[0]?.[info.id] || validationErrors[0]?.[info.id]}
+                                                  minDate={getDateLimitsForField(info).minDate}
+                                                  maxDate={getDateLimitsForField(info).maxDate}
                                                 />
                                               </div>
                                             );

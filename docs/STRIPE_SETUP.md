@@ -183,7 +183,7 @@ supabase functions deploy stripe-webhook
 
 ## Flusso del Pagamento
 
-1. **Utente clicca "Paga con Stripe"** nel carrello
+1. **Utente clicca "Paga"** nel carrello
 2. **Frontend chiama** `create-stripe-checkout` Edge Function
 3. **Edge Function crea** una Stripe Checkout Session e restituisce l'URL
 4. **Utente viene reindirizzato** a Stripe per completare il pagamento

@@ -5,6 +5,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 interface CreateCustomerRequest {
@@ -43,7 +44,10 @@ function generateRandomPassword(length: number = 16): string {
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      status: 200,
+      headers: corsHeaders 
+    });
   }
 
   if (req.method !== 'POST') {
@@ -60,32 +64,16 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const customerData: CreateCustomerRequest = await req.json();
-    console.log('[DEBUG] Creating customer account for:', customerData.email);
-
-    // Initialize Supabase admin client
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUP_SECR_KEY') ?? ''
-    );
-
-    // Check if user already exists
-    const { data: existingUser, error: checkError } = await supabaseAdmin.auth.admin.listUsers();
-    
-    if (checkError) {
-      console.error('[DEBUG] Error checking existing users:', checkError);
-      throw new Error(`Errore nel controllo utenti esistenti: ${checkError.message}`);
-    }
-
-    const userExists = existingUser.users.some(user => user.email === customerData.email);
-    
-    if (userExists) {
-      console.log('[DEBUG] User already exists with email:', customerData.email);
+    // ✅ 1. VERIFICA AUTENTICAZIONE
+    console.log('[CREATE-CUSTOMER-ACCOUNT] 🔐 Step 1: Verifying authentication');
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('[CREATE-CUSTOMER-ACCOUNT] ❌ No authorization header');
       return new Response(JSON.stringify({ 
-        error: 'Un utente con questa email esiste già nel sistema',
+        error: 'Autenticazione richiesta',
         success: false 
       }), {
-        status: 400,
+        status: 401,
         headers: {
           'Content-Type': 'application/json',
           ...corsHeaders,
@@ -93,12 +81,101 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    const token = authHeader.replace('Bearer ', '');
+    console.log('[CREATE-CUSTOMER-ACCOUNT] 🔑 Token extracted, length:', token.length);
+    
+    // Initialize Supabase client for JWT verification
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUP_PUB_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+
+    if (authError || !user) {
+      console.error('[CREATE-CUSTOMER-ACCOUNT] ❌ Authentication failed:', {
+        authError: authError?.message,
+        hasUser: !!user
+      });
+      return new Response(JSON.stringify({ 
+        error: 'Autenticazione richiesta',
+        success: false 
+      }), {
+        status: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      });
+    }
+
+    console.log('[CREATE-CUSTOMER-ACCOUNT] ✅ User authenticated:', {
+      userId: user.id,
+      email: user.email
+    });
+
+    // ✅ 2. VERIFICA AUTORIZZAZIONE (solo admin)
+    console.log('[CREATE-CUSTOMER-ACCOUNT] 👤 Step 2: Verifying admin authorization');
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUP_SECR_KEY') ?? ''
+    );
+
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('user_type')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error('[CREATE-CUSTOMER-ACCOUNT] ❌ Error fetching profile:', profileError);
+      return new Response(JSON.stringify({ 
+        error: 'Errore nel recupero del profilo utente',
+        success: false 
+      }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      });
+    }
+
+    if (profile?.user_type !== 'admin') {
+      console.error('[CREATE-CUSTOMER-ACCOUNT] ❌ Unauthorized access attempt:', {
+        authenticatedUserId: user.id,
+        userType: profile?.user_type
+      });
+      return new Response(JSON.stringify({ 
+        error: 'Accesso negato. Solo gli amministratori possono creare account.',
+        success: false 
+      }), {
+        status: 403,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        },
+      });
+    }
+
+    console.log('[CREATE-CUSTOMER-ACCOUNT] ✅ Admin authorization verified');
+
+    // ✅ 3. VALIDA INPUT
+    console.log('[CREATE-CUSTOMER-ACCOUNT] 📝 Step 3: Processing request');
+    const customerData: CreateCustomerRequest = await req.json();
+    console.log('[CREATE-CUSTOMER-ACCOUNT] Creating customer account for:', customerData.email);
+
+    // ✅ 4. PROCEED TO CREATE USER
+    // Nota: Non c'è getUserByEmail nell'API Supabase, quindi lasciamo che createUser gestisca l'errore
+    // se l'utente esiste già (vedi gestione errore più sotto)
+    console.log('[CREATE-CUSTOMER-ACCOUNT] 📝 Step 4: Proceeding to create user account');
+
     // Generate a secure random temporary password
     const tempPassword = generateRandomPassword(8);
     console.log('[DEBUG] Generated random temporary password for new user');
 
     // Create user account with Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    const { data: authData, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
       email: customerData.email,
       password: tempPassword,
       email_confirm: true, // Auto-confirm email
@@ -111,11 +188,11 @@ const handler = async (req: Request): Promise<Response> => {
       }
     });
 
-    if (authError) {
-      console.error('[DEBUG] Auth creation error:', authError);
+    if (createUserError) {
+      console.error('[DEBUG] Auth creation error:', createUserError);
       
       // Handle specific error cases
-      if (authError.message?.includes('User already registered')) {
+      if (createUserError.message?.includes('User already registered')) {
         return new Response(JSON.stringify({ 
           error: 'Un utente con questa email è già registrato',
           success: false 
@@ -128,7 +205,7 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
       
-      throw new Error(`Errore nella creazione dell'account: ${authError.message}`);
+      throw new Error(`Errore nella creazione dell'account: ${createUserError.message}`);
     }
 
     console.log('[DEBUG] User created successfully:', authData.user?.id);
@@ -186,7 +263,7 @@ const handler = async (req: Request): Promise<Response> => {
               body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
               .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
               .header { background-color: #ffffff; padding: 40px 20px; text-align: center; }
-              .logo { width: 60px; height: 60px; background-color: rgba(255,255,255,0.2); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+              .logo { width: 180px; height: 180px; background-color: rgba(255,255,255,0.2); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; }
               .logo img { display: block; margin: auto; max-width: 100%; max-height: 100%; }
               .logo-text { color: white; font-size: 24px; font-weight: bold; }
               .header-title { color: white; font-size: 28px; font-weight: bold; margin: 0; }
@@ -209,7 +286,7 @@ const handler = async (req: Request): Promise<Response> => {
             <div class="container">
               <div class="header">
                 <div class="logo">
-                  <img src="${shopIconUrl}" alt="${shopName} Logo" style="width: 40px; height: 40px; object-fit: contain;">
+                  <img src="${shopIconUrl}" alt="${shopName} Logo" style="width: 150px; height: 150px; object-fit: contain;">
                 </div>
                 <h1 class="header-title">Benvenuto su ${shopName}!</h1>
                 <p class="header-subtitle">Il tuo account è stato creato con successo</p>
@@ -283,7 +360,7 @@ const handler = async (req: Request): Promise<Response> => {
       userId: authData.user?.id,
       user: authData.user,
       message: 'Account creato con successo. Email di benvenuto inviata al cliente.',
-      tempPassword: tempPassword
+      // tempPassword rimosso per sicurezza - viene inviato solo via email
     }), {
       status: 200,
       headers: {

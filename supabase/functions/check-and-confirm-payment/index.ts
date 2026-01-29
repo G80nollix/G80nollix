@@ -419,6 +419,7 @@ const handler = async (req: Request): Promise<Response> => {
           status: newBookingStatus,
           stripe_checkout_session_id: sessionId,
           stripe_payment_intent_id: paymentIntent.id,
+          terms_accepted: new Date().toISOString(),
         })
         .eq('id', booking.id)
         .select('id, cart, status, rifPrenotazione, stripe_payment_intent_id')

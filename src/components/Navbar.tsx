@@ -124,8 +124,8 @@ const Navbar = () => {
           <div className={navStyles.logoContainer}>
             <Link to="/" className="flex items-center group">
               <img 
-                src="/Asti/logo_g80.png" 
-                alt="G80 Logo" 
+                src="/cerreto/logo_cerreto.png" 
+                alt="Cerreto Logo" 
                 className={navStyles.logo}
               />
             </Link>
@@ -172,8 +172,8 @@ const Navbar = () => {
                   <div className="flex items-center px-3 py-1.5 rounded-lg border" style={{ minHeight: '44px', backgroundColor: '#E31E2420', borderColor: '#E31E2460' }}>
                 <span className="text-sm font-semibold text-gray-700" style={{ fontFamily: 'Oswald, sans-serif' }}>
                   Ciao <span style={{ color: '#E31E24' }}>{getUserDisplayName()}</span>
-                </span>
-              </div>
+                    </span>
+                  </div>
                 )}
                 {/* Cart Icon - Only for non-admin users - modernizzato */}
                 {!isAdmin && (

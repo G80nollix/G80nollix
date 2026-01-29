@@ -214,6 +214,7 @@ const handler = async (req: Request): Promise<Response> => {
           cart: false,
           status: 'confirmed',
           stripe_payment_intent_id: paymentIntent.id,
+          terms_accepted: new Date().toISOString(),
           // Keep existing stripe_checkout_session_id if it exists
           ...(booking.stripe_checkout_session_id ? { stripe_checkout_session_id: booking.stripe_checkout_session_id } : {}),
         })

@@ -11,7 +11,7 @@ import { format, isSameDay, differenceInDays } from "date-fns";
 import { it } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Calendar, Clock, MapPin, Truck, Home, CheckCircle } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, Truck, Home, CheckCircle, Loader2 } from "lucide-react";
 import { DEFAULT_IMAGES } from "@/constants";
 import { BookingService } from "@/services/api";
 import type { CreateBookingData } from "@/types";
@@ -640,6 +640,20 @@ export default function BookingDetails() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Overlay di loading durante l'aggiunta al carrello - copre tutta la pagina incluso header */}
+      {isAddingToCart && (
+        <div className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-16 h-16 text-white animate-spin mx-auto mb-4" />
+            <p className="text-white text-lg font-semibold">
+              Aggiunta al carrello...
+            </p>
+            <p className="text-white/80 text-sm mt-2">
+              Attendi, stiamo elaborando la richiesta...
+            </p>
+          </div>
+        </div>
+      )}
       <FixedNavbar />
       
       <div className="container mx-auto px-4 py-8 pt-20 md:pt-24 max-w-4xl">

@@ -13,6 +13,8 @@ interface DynamicFormFieldProps {
   onChange: (value: any) => void;
   onValidationChange?: (isValid: boolean, errorMessage?: string) => void;
   error?: string;
+  minDate?: string; // Data minima per campi di tipo date (formato YYYY-MM-DD)
+  maxDate?: string; // Data massima per campi di tipo date (formato YYYY-MM-DD)
 }
 
 // Funzioni di validazione
@@ -34,6 +36,8 @@ export const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
   onChange,
   onValidationChange,
   error,
+  minDate,
+  maxDate,
 }) => {
   const fieldType = information.information_type?.name || 'text';
   const attributeValues = information.information_attributes_values || [];
@@ -61,10 +65,55 @@ export const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
       return;
     }
     
+    const valueStr = value ? String(value).trim() : '';
+    
+    // Validazione per campi di tipo date con minDate/maxDate
+    if (fieldType === 'date' && (minDate || maxDate)) {
+      if (!valueStr) {
+        // Se il campo è vuoto, non validare il range (la validazione required viene gestita altrove)
+        if (!isRequired) {
+          const result = { isValid: true, errorMessage: '' };
+          if (!lastValidationResultRef.current || 
+              lastValidationResultRef.current.isValid !== result.isValid ||
+              lastValidationResultRef.current.errorMessage !== result.errorMessage) {
+            lastValidationResultRef.current = result;
+            onValidationChangeRef.current(true, '');
+          }
+        }
+        return;
+      }
+      
+      // Valida che la data sia nel range
+      // Usa solo la parte data (YYYY-MM-DD) per il confronto, ignorando l'ora
+      const selectedDate = new Date(valueStr + 'T00:00:00');
+      const minDateObj = minDate ? new Date(minDate + 'T00:00:00') : null;
+      const maxDateObj = maxDate ? new Date(maxDate + 'T00:00:00') : null;
+      
+      let isValid = true;
+      let errorMessage = '';
+      
+      if (minDateObj && selectedDate < minDateObj) {
+        isValid = false;
+        const minDateFormatted = minDateObj.toLocaleDateString('it-IT');
+        errorMessage = `La data deve essere successiva al ${minDateFormatted}`;
+      } else if (maxDateObj && selectedDate > maxDateObj) {
+        isValid = false;
+        const maxDateFormatted = maxDateObj.toLocaleDateString('it-IT');
+        errorMessage = `La data deve essere antecedente al ${maxDateFormatted}`;
+      }
+      
+      const result = { isValid, errorMessage };
+      if (!lastValidationResultRef.current || 
+          lastValidationResultRef.current.isValid !== result.isValid ||
+          lastValidationResultRef.current.errorMessage !== result.errorMessage) {
+        lastValidationResultRef.current = result;
+        onValidationChangeRef.current(isValid, errorMessage);
+      }
+      return;
+    }
+    
     // Se c'è una validazione specificata
     if (validationName) {
-      const valueStr = value ? String(value).trim() : '';
-      
       // Se il campo è vuoto, non validare il formato (la validazione required viene gestita altrove)
       if (!valueStr) {
         // Se non è required, il formato è valido (non c'è nulla da validare)
@@ -116,7 +165,7 @@ export const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
         onValidationChangeRef.current(true, '');
       }
     }
-  }, [value, validationName, isRequired, information.name]);
+  }, [value, validationName, isRequired, information.name, fieldType, minDate, maxDate]);
 
   // Verifica se il campo è Peso, Piede o Altezza (case-insensitive)
   const isNumericField = () => {
@@ -306,13 +355,53 @@ export const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
         );
 
       case 'date':
+        const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+          const inputValue = e.target.value;
+          
+          // Permetti sempre l'aggiornamento del valore durante la digitazione
+          // La validazione verrà fatta nel useEffect e mostrerà solo l'errore
+          // senza cancellare il valore
+          onChange(inputValue);
+        };
+        
         return (
           <Input
             type="date"
             value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={handleDateChange}
+            onBlur={(e) => {
+              // Validazione al blur solo se la data è completa e fuori range
+              const inputValue = e.target.value;
+              
+              // Verifica che la data sia in formato completo YYYY-MM-DD
+              const isCompleteDate = /^\d{4}-\d{2}-\d{2}$/.test(inputValue);
+              
+              if (inputValue && isCompleteDate && (minDate || maxDate)) {
+                // Usa solo la parte data (YYYY-MM-DD) per il confronto, ignorando l'ora
+                const selectedDate = new Date(inputValue + 'T00:00:00');
+                const minDateObj = minDate ? new Date(minDate + 'T00:00:00') : null;
+                const maxDateObj = maxDate ? new Date(maxDate + 'T00:00:00') : null;
+                
+                // Verifica che la data sia valida (non Invalid Date)
+                if (isNaN(selectedDate.getTime())) {
+                  return;
+                }
+                
+                const isBeforeMin = minDateObj && selectedDate < minDateObj;
+                const isAfterMax = maxDateObj && selectedDate > maxDateObj;
+                
+                if (isBeforeMin || isAfterMax) {
+                  // Reset al valore precedente solo al blur se la data è completa ma fuori range
+                  e.target.value = value || '';
+                  // Aggiorna lo stato per triggerare la validazione
+                  onChange(value || '');
+                }
+              }
+            }}
             className={error ? 'border-red-500' : ''}
             required={isRequired}
+            min={minDate}
+            max={maxDate}
           />
         );
 
@@ -459,6 +548,16 @@ export const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
         {isRequired && <span className="text-red-500 ml-1">*</span>}
       </Label>
       {renderField()}
+      {/* Nota informativa per limiti di data di nascita */}
+      {fieldType === 'date' && (minDate || maxDate) && information.name?.toLowerCase().includes('nascita') && (
+        <p className="text-xs text-blue-600 mt-1 italic">
+          {minDate && maxDate 
+            ? 'Il bambino deve avere tra 2 e 13 anni compiuti'
+            : maxDate 
+            ? 'L\'utilizzatore deve avere almeno 14 anni compiuti'
+            : null}
+        </p>
+      )}
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   );

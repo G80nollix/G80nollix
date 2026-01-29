@@ -171,8 +171,8 @@ const FixedNavbar = ({ showScrollProgress = false, scrollProgress = 0 }: FixedNa
             <Link to="/" className="cursor-pointer">
               <div className={fixedNavStyles.logoContainer}>
                 <img 
-                  src="/Asti/logo_g80.png" 
-                  alt="G80 Logo" 
+                  src="/logo_g80.png" 
+                  alt="G80 Sport Logo" 
                   className="h-full w-auto object-contain transition-all duration-300"
                 />
               </div>
@@ -188,7 +188,7 @@ const FixedNavbar = ({ showScrollProgress = false, scrollProgress = 0 }: FixedNa
                   style={{ borderColor: '#5F5F5F', color: '#5F5F5F', fontFamily: 'Oswald, sans-serif', fontWeight: '700' }}
                 >
                   <img 
-                    src="/altre/icons8-sciatore-90.png" 
+                    src="/g80/icons8-sciatore-90.png" 
                     alt="Skier" 
                     className={fixedNavStyles.buttonIcon}
                   />
@@ -217,7 +217,7 @@ const FixedNavbar = ({ showScrollProgress = false, scrollProgress = 0 }: FixedNa
                   style={{ borderColor: '#5F5F5F', ...fixedNavStyles.cartButtonSize }}
                 >
                   <img 
-                    src="/altre/icona carrello.png" 
+                    src="/g80/icona carrello.png" 
                     alt="Carrello" 
                     className={fixedNavStyles.cartIcon}
                   />
@@ -272,7 +272,7 @@ const FixedNavbar = ({ showScrollProgress = false, scrollProgress = 0 }: FixedNa
                     >
                       <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-gray-200 transition-colors">
                         <img 
-                          src="/altre/icona cornetta.png" 
+                          src="/g80/icona cornetta.png" 
                           alt="Contatti" 
                           className="h-5 w-5 object-contain"
                         />
@@ -375,7 +375,7 @@ const FixedNavbar = ({ showScrollProgress = false, scrollProgress = 0 }: FixedNa
                         >
                           <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-blue-100 group-hover:bg-blue-200 transition-colors">
                             <img 
-                              src="/altre/icona accedi.png" 
+                              src="/g80/icona accedi.png" 
                               alt="Accedi" 
                               className="h-5 w-5 object-contain"
                             />
@@ -391,7 +391,7 @@ const FixedNavbar = ({ showScrollProgress = false, scrollProgress = 0 }: FixedNa
                         >
                           <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-green-100 group-hover:bg-green-200 transition-colors">
                             <img 
-                              src="/altre/icona registrati.png" 
+                              src="/g80/icona registrati.png" 
                               alt="Registrati" 
                               className="h-5 w-5 object-contain"
                             />

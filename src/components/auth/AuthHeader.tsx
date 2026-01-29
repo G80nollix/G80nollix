@@ -16,8 +16,8 @@ const AuthHeader = ({ isLogin, isForgotPassword }: AuthHeaderProps) => {
     <CardHeader className="text-center">
       <div className="mx-auto mb-6">
         <img 
-          src="/Asti/logo_g80.png" 
-          alt="G80 Sport" 
+          src="logo_g80.png" 
+          alt="G80 Sport Logo" 
           className="h-20 w-auto mx-auto"
         />
       </div>
